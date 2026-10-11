@@ -69,11 +69,11 @@ export async function signUp(input: { name: string; email: string; password: str
   return { ...user };
 }
 
-// ponytail: mock sign-in accepts any password of 6+ characters; Supabase Auth replaces this.
+// ponytail: mock sign-in accepts any password of 8+ characters; Supabase Auth replaces this.
 export async function signIn(input: { email: string; password: string }) {
   await wait();
   const user = USERS.find((u) => u.email === input.email.trim().toLowerCase());
-  if (!user || input.password.length < 6) throw new Error('That email and password don’t match.');
+  if (!user || input.password.length < 8) throw new Error('That email and password don’t match.');
   me = user;
   return { ...user };
 }

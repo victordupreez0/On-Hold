@@ -9,7 +9,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { SessionProvider, useSession } from '@/session';
 import { colors } from '@/theme';
+import { ToastProvider } from '@/toast';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,9 +29,27 @@ export default function RootLayout() {
   if (!loaded && !error) return null;
 
   return (
-    <>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.white } }} />
-    </>
+    <SessionProvider>
+      <ToastProvider>
+        <StatusBar style="dark" />
+        <RootStack />
+      </ToastProvider>
+    </SessionProvider>
+  );
+}
+
+function RootStack() {
+  const { user } = useSession();
+  return (
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.white } }}>
+      <Stack.Protected guard={!user}>
+        <Stack.Screen name="welcome" />
+        <Stack.Screen name="sign-up" />
+        <Stack.Screen name="sign-in" />
+      </Stack.Protected>
+      <Stack.Protected guard={!!user}>
+        <Stack.Screen name="(app)" />
+      </Stack.Protected>
+    </Stack>
   );
 }
