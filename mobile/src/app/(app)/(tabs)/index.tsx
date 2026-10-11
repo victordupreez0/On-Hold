@@ -82,6 +82,8 @@ function FullHome({ user }: { user: User }) {
 
       <HoldCard />
 
+      {user.role === 'admin' && <ReviewPrompt />}
+
       {last && (
         <Section title="Your last check">
           <Card onPress={() => router.push(`/check/${last.id}`)} accessibilityLabel={`Last check: ${verdictStyle[last.verdict].word}. ${last.headline}`}>
@@ -104,6 +106,23 @@ function FullHome({ user }: { user: User }) {
 
       <Circulating limit={3} />
     </Screen>
+  );
+}
+
+function ReviewPrompt() {
+  const pending = useLoad(api.listPendingReports);
+  const n = pending.data?.length ?? 0;
+  if (!n) return null;
+  return (
+    <Card onPress={() => router.push('/admin')} accessibilityLabel={`${n} reports waiting for review`}>
+      <View style={styles.row}>
+        <Feather name="shield" size={22} color={colors.ink} />
+        <T v="label" style={{ flex: 1 }}>
+          {n} {n === 1 ? 'report is' : 'reports are'} waiting for review
+        </T>
+        <Feather name="chevron-right" size={22} color={colors.ink} />
+      </View>
+    </Card>
   );
 }
 
