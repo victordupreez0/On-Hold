@@ -46,7 +46,7 @@ export default function SignUp() {
   };
 
   return (
-    <Screen footer={<Button label="Create account" onPress={submit} loading={busy} />}>
+    <Screen edges={['top', 'bottom']} footer={<Button label="Create account" onPress={submit} loading={busy} />}>
       <Header />
       <T v="title" role="heading">
         Create your account

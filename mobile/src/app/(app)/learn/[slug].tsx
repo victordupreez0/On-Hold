@@ -73,7 +73,7 @@ function Guide({ e }: { e: Explainer }) {
       <Button
         label={isCall ? 'Someone is on the phone now' : 'Got one like this? Check it'}
         icon={isCall ? 'phone-call' : 'search'}
-        onPress={() => router.push({ pathname: '/check', params: isCall ? { mode: 'call' } : {} })}
+        onPress={() => router.navigate(isCall ? { pathname: '/check', params: { mode: 'call' } } : '/check')}
       />
 
       <Pressable onPress={() => Linking.openURL(e.source.url)} accessibilityRole="link" accessibilityLabel={`Source: ${e.source.name}`} style={styles.source}>

@@ -256,7 +256,8 @@ export const CHECK_RULES: [RegExp, keyof typeof VERDICTS][] = [
 // A message mentioning money, links or codes is never "safe" in the mock.
 export const RISKY_HINT = /https?:|www\.|\.co\b|\.com\b|\br ?\d|\bpay|\blink|click|\bcode|password/i;
 
-export const CALL_HINT = /\b(phon(e|ed|ing)|call(ed|ing)?|caller|on the line|rang)\b|says (he|she|they)('s| is| are) from/i;
+// Call wording only: "my phone broke" in a WhatsApp is still a message.
+export const CALL_HINT = /\b(phoned|phoning|calling|called me|caller|rang)\b|on the (phone|line)|says (he|she|they)('s| is| are) from/i;
 
 export const CHECKS: CheckResult[] = [
   { id: 'c_seed1', userId: 'u_marie', kind: 'message', createdAt: ago(3), ...VERDICTS.aarto },

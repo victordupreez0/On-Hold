@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { router } from 'expo-router';
-import type { ComponentProps, ReactNode } from 'react';
+import { Children, Fragment, type ComponentProps, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -23,6 +23,8 @@ import { colors, minTouch, radius, space, type } from '@/theme';
 export type IconName = ComponentProps<typeof Feather>['name'];
 export { Feather };
 
+const pressScale = ({ pressed }: { pressed: boolean }) => (pressed ? { transform: [{ scale: 0.98 }] } : null);
+
 // ---------- Text ----------
 
 export function T({ v = 'body', color = colors.ink, style, ...rest }: TextProps & { v?: keyof typeof type; color?: string }) {
@@ -35,15 +37,16 @@ type ScreenProps = {
   children: ReactNode;
   scroll?: boolean;
   footer?: ReactNode;
+  /** Tab screens only need the top inset; the tab bar handles the bottom. */
   edges?: ('top' | 'bottom')[];
   style?: StyleProp<ViewStyle>;
   background?: string;
 };
 
 /** Safe-area page with a centred max width, so the web preview reads like a phone. */
-export function Screen({ children, scroll = true, footer, edges = ['top', 'bottom'], style, background = colors.white }: ScreenProps) {
+export function Screen({ children, scroll = true, footer, edges = ['top'], style, background = colors.white }: ScreenProps) {
   const body = scroll ? (
-    <ScrollView contentContainerStyle={[styles.pad, style]} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={[styles.pad, style]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       {children}
     </ScrollView>
   ) : (
@@ -59,12 +62,28 @@ export function Screen({ children, scroll = true, footer, edges = ['top', 'botto
   );
 }
 
+/** Large title for the root of each tab. */
+export function PageTitle({ title, subtitle, right }: { title: string; subtitle?: string; right?: ReactNode }) {
+  return (
+    <View style={styles.pageTitle}>
+      <View style={{ flex: 1, gap: space.xs }}>
+        <T v="title" role="heading">
+          {title}
+        </T>
+        {subtitle && <T color={colors.inkSoft}>{subtitle}</T>}
+      </View>
+      {right}
+    </View>
+  );
+}
+
+/** Back bar for screens pushed inside a tab. */
 export function Header({ title, right, onBack }: { title?: string; right?: ReactNode; onBack?: () => void }) {
   const back = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/')));
   return (
     <View style={styles.header}>
-      <Pressable onPress={back} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} style={styles.iconButton}>
-        <Feather name="arrow-left" size={26} color={colors.ink} />
+      <Pressable onPress={back} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={8} style={({ pressed }) => [styles.iconButton, pressed && { opacity: 0.6 }]}>
+        <Feather name="chevron-left" size={28} color={colors.ink} />
       </Pressable>
       {title ? (
         <T v="heading" style={{ flex: 1 }} numberOfLines={1} role="heading">
@@ -94,7 +113,7 @@ type ButtonProps = {
 const BUTTON = {
   primary: { bg: colors.highlighter, fg: colors.ink },
   secondary: { bg: colors.grey, fg: colors.ink },
-  ghost: { bg: 'transparent', fg: colors.ink },
+  ghost: { bg: colors.white, fg: colors.ink },
   danger: { bg: colors.stop, fg: colors.white },
   dark: { bg: colors.ink, fg: colors.white },
 };
@@ -110,12 +129,7 @@ export function Button({ label, onPress, variant = 'primary', icon, loading, dis
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: !!off, busy: !!loading }}
-      style={({ pressed }) => [
-        styles.button,
-        { backgroundColor: c.bg, opacity: off ? 0.55 : pressed ? 0.85 : 1 },
-        variant === 'ghost' && styles.ghost,
-        style,
-      ]}>
+      style={(state) => [styles.button, { backgroundColor: c.bg, opacity: off ? 0.45 : 1 }, variant === 'ghost' && styles.ghost, !off && pressScale(state), style]}>
       {loading ? (
         <ActivityIndicator color={c.fg} />
       ) : (
@@ -133,12 +147,68 @@ export function Button({ label, onPress, variant = 'primary', icon, loading, dis
 export function Card({ children, onPress, style, accessibilityLabel }: { children: ReactNode; onPress?: () => void; style?: StyleProp<ViewStyle>; accessibilityLabel?: string }) {
   if (!onPress) return <View style={[styles.card, style]}>{children}</View>;
   return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel} style={(state) => [styles.card, pressScale(state), style]}>
+      {children}
+    </Pressable>
+  );
+}
+
+/** A quiet grouped list (iOS-settings style): one bordered surface, hairline dividers, no card soup. */
+export function ListGroup({ children }: { children: ReactNode }) {
+  const rows = Children.toArray(children).filter(Boolean);
+  return (
+    <View style={styles.group}>
+      {rows.map((row, i) => (
+        <Fragment key={i}>
+          {i > 0 && <View style={styles.divider} />}
+          {row}
+        </Fragment>
+      ))}
+    </View>
+  );
+}
+
+type RowProps = {
+  title: string;
+  subtitle?: string;
+  icon?: IconName;
+  iconBg?: string;
+  iconColor?: string;
+  leading?: ReactNode;
+  right?: ReactNode;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+};
+
+export function ListRow({ title, subtitle, icon, iconBg = colors.grey, iconColor = colors.ink, leading, right, onPress, accessibilityLabel }: RowProps) {
+  const content = (
+    <>
+      {leading ??
+        (icon && (
+          <View style={[styles.rowIcon, { backgroundColor: iconBg }]}>
+            <Feather name={icon} size={20} color={iconColor} />
+          </View>
+        ))}
+      <View style={{ flex: 1, gap: 2 }}>
+        <T v="label">{title}</T>
+        {subtitle && (
+          <T v="small" color={colors.inkSoft}>
+            {subtitle}
+          </T>
+        )}
+      </View>
+      {right}
+      {onPress && <Feather name="chevron-right" size={22} color={colors.inkSoft} />}
+    </>
+  );
+  if (!onPress) return <View style={styles.row}>{content}</View>;
+  return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }, style]}>
-      {children}
+      accessibilityLabel={accessibilityLabel ?? (subtitle ? `${title}. ${subtitle}` : title)}
+      style={({ pressed }) => [styles.row, pressed && { backgroundColor: colors.grey }]}>
+      {content}
     </Pressable>
   );
 }
@@ -147,7 +217,7 @@ export function Pill({ label, bg = colors.grey, fg = colors.ink, icon }: { label
   return (
     <View style={[styles.pill, { backgroundColor: bg }]}>
       {icon && <Feather name={icon} size={14} color={fg} />}
-      <T v="small" color={fg} style={{ fontFamily: type.label.fontFamily }}>
+      <T v="small" color={fg} style={{ fontFamily: type.label.fontFamily, fontSize: 14 }}>
         {label}
       </T>
     </View>
@@ -161,9 +231,11 @@ export function Chip({ label, selected, onPress, icon }: { label: string; select
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       accessibilityLabel={label}
-      style={[styles.chip, selected ? styles.chipOn : styles.chipOff]}>
+      style={(state) => [styles.chip, selected ? styles.chipOn : styles.chipOff, pressScale(state)]}>
       {icon && <Feather name={icon} size={18} color={colors.ink} />}
-      <T v="label">{label}</T>
+      <T v="label" style={{ fontSize: 16 }}>
+        {label}
+      </T>
     </Pressable>
   );
 }
@@ -195,7 +267,7 @@ type FieldProps = TextInputProps & { label: string; error?: string | null; hint?
 
 export function TextField({ label, error, hint, style, multiline, ...rest }: FieldProps) {
   return (
-    <View style={{ gap: space.xs }}>
+    <View style={{ gap: space.xs + 2 }}>
       <T v="label">{label}</T>
       {hint && (
         <T v="small" color={colors.inkSoft}>
@@ -213,7 +285,7 @@ export function TextField({ label, error, hint, style, multiline, ...rest }: Fie
       {error && (
         <View style={styles.errorRow} accessibilityLiveRegion="polite">
           <Feather name="alert-circle" size={16} color={colors.stop} />
-          <T v="small" color={colors.stop}>
+          <T v="small" color={colors.stop} style={{ flex: 1 }}>
             {error}
           </T>
         </View>
@@ -242,11 +314,29 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   );
 }
 
+export function EmptyState({ icon, title, body, action }: { icon: IconName; title: string; body: string; action?: ReactNode }) {
+  return (
+    <View style={styles.empty}>
+      <View style={styles.emptyIcon}>
+        <Feather name={icon} size={28} color={colors.ink} />
+      </View>
+      <T v="heading" style={{ textAlign: 'center' }}>
+        {title}
+      </T>
+      <T color={colors.inkSoft} style={{ textAlign: 'center' }}>
+        {body}
+      </T>
+      {action}
+    </View>
+  );
+}
+
+/** Quiet uppercase label over a group, so content leads and headings don't shout. */
 export function Section({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <View style={{ gap: space.sm + 4 }}>
+    <View style={{ gap: space.sm + 2 }}>
       <View style={styles.sectionHead}>
-        <T v="heading" role="heading">
+        <T v="overline" color={colors.inkSoft} role="heading">
           {title}
         </T>
         {action}
@@ -256,9 +346,15 @@ export function Section({ title, action, children }: { title: string; action?: R
   );
 }
 
-export function TextLink({ label, onPress }: { label: string; onPress: () => void }) {
+export function TextLink({ label, onPress, icon }: { label: string; onPress: () => void; icon?: IconName }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="link" accessibilityLabel={label} hitSlop={10} style={{ minHeight: minTouch, justifyContent: 'center' }}>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="link"
+      accessibilityLabel={label}
+      hitSlop={10}
+      style={({ pressed }) => [styles.textLink, pressed && { opacity: 0.6 }]}>
+      {icon && <Feather name={icon} size={18} color={colors.ink} />}
       <T v="label" style={{ textDecorationLine: 'underline' }}>
         {label}
       </T>
@@ -280,51 +376,56 @@ export function timeAgo(iso: string) {
 
 const styles = StyleSheet.create({
   column: { flex: 1, width: '100%', maxWidth: 560, alignSelf: 'center' },
-  pad: { padding: space.lg - 4, gap: space.lg, flexGrow: 1 },
+  pad: { paddingHorizontal: space.lg - 4, paddingTop: space.sm, paddingBottom: space.xxl, gap: space.lg + 4, flexGrow: 1 },
   footer: { paddingHorizontal: space.lg - 4, paddingTop: space.sm, paddingBottom: space.md, gap: space.sm },
-  header: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: minTouch, marginBottom: -space.sm },
-  iconButton: { width: minTouch, height: minTouch, alignItems: 'center', justifyContent: 'center', marginLeft: -space.sm },
+  pageTitle: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingTop: space.sm },
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: minTouch, marginBottom: -space.sm },
+  iconButton: { width: minTouch, height: minTouch, alignItems: 'center', justifyContent: 'center', marginLeft: -space.md + 2 },
   button: {
-    minHeight: 56,
-    borderRadius: radius.md,
+    minHeight: 58,
+    borderRadius: radius.md + 2,
     paddingHorizontal: space.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
   },
-  ghost: { borderWidth: 2, borderColor: colors.line },
-  card: { backgroundColor: colors.grey, borderRadius: radius.lg, padding: space.md + 2, gap: space.sm },
+  ghost: { borderWidth: 1.5, borderColor: colors.line },
+  card: { backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.hairline, padding: space.md + 2, gap: space.sm },
+  group: { backgroundColor: colors.white, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.hairline, overflow: 'hidden' },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.line, marginLeft: 72 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 68, paddingHorizontal: space.md, paddingVertical: space.sm + 4 },
+  rowIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: radius.pill,
   },
   chip: {
-    minHeight: minTouch,
+    minHeight: minTouch - 4,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,
-    borderWidth: 2,
+    borderWidth: 1.5,
   },
   chipOn: { backgroundColor: colors.highlighter, borderColor: colors.ink },
+  chipOff: { backgroundColor: colors.white, borderColor: colors.line },
   toggle: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 56 },
   track: { width: 56, height: 32, borderRadius: 16, backgroundColor: colors.line, padding: 3 },
   trackOn: { backgroundColor: colors.ink },
   knob: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.white },
   knobOn: { backgroundColor: colors.highlighter, transform: [{ translateX: 24 }] },
-  chipOff: { backgroundColor: colors.white, borderColor: colors.line },
   input: {
     ...type.body,
     color: colors.ink,
     minHeight: 56,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.line,
     borderRadius: radius.md,
     paddingHorizontal: space.md,
@@ -334,5 +435,8 @@ const styles = StyleSheet.create({
   inputError: { borderColor: colors.stop },
   errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.lg, minHeight: 200 },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  empty: { alignItems: 'center', gap: space.sm + 2, paddingVertical: space.xl, paddingHorizontal: space.md },
+  emptyIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.highlighter, alignItems: 'center', justifyContent: 'center', marginBottom: space.xs },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 20 },
+  textLink: { minHeight: minTouch, flexDirection: 'row', alignItems: 'center', gap: space.sm },
 });

@@ -6,15 +6,17 @@ import {
   useAudioRecorderState,
 } from 'expo-audio';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
 import * as api from '@/api';
 import { colors, radius, space } from '@/theme';
 import { useToast } from '@/toast';
 import { Feather, T } from './ui';
 
-/** Tap to talk, tap to stop. The words land in the composer so people can see and fix them. */
-export function VoiceButton({ onTranscript, large = false }: { onTranscript: (text: string) => void; large?: boolean }) {
+type Props = { onTranscript: (text: string) => void; large?: boolean; style?: StyleProp<ViewStyle> };
+
+/** Tap to talk, tap to stop. The words land in the text box so people can see and fix them. */
+export function VoiceButton({ onTranscript, large = false, style }: Props) {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const state = useAudioRecorderState(recorder);
   const [busy, setBusy] = useState(false);
@@ -42,7 +44,8 @@ export function VoiceButton({ onTranscript, large = false }: { onTranscript: (te
 
   const recording = state.isRecording;
   const seconds = Math.floor(state.durationMillis / 1000);
-  const label = busy ? 'Listening back…' : recording ? `Stop (${seconds}s)` : large ? 'Tap and speak' : 'Speak';
+  const label = busy ? 'Listening…' : recording ? `Stop · ${seconds}s` : large ? 'Tap and tell us' : 'Speak';
+  const fg = recording ? colors.white : colors.ink;
 
   return (
     <Pressable
@@ -51,13 +54,9 @@ export function VoiceButton({ onTranscript, large = false }: { onTranscript: (te
       accessibilityRole="button"
       accessibilityLabel={recording ? 'Stop recording' : 'Speak instead of typing'}
       accessibilityState={{ busy }}
-      style={[styles.button, large && styles.large, recording && styles.recording]}>
-      {busy ? (
-        <ActivityIndicator color={colors.ink} />
-      ) : (
-        <Feather name={recording ? 'square' : 'mic'} size={large ? 26 : 22} color={recording ? colors.white : colors.ink} />
-      )}
-      <T v="small" color={recording ? colors.white : colors.ink} style={{ fontSize: large ? 15 : 13, lineHeight: 18 }}>
+      style={({ pressed }) => [styles.button, large && styles.large, recording && styles.recording, pressed && { transform: [{ scale: 0.97 }] }, style]}>
+      {busy ? <ActivityIndicator color={colors.ink} /> : <Feather name={recording ? 'square' : 'mic'} size={large ? 26 : 22} color={fg} />}
+      <T v={large ? 'label' : 'small'} color={fg} style={large ? undefined : { fontSize: 14, lineHeight: 18 }}>
         {label}
       </T>
     </Pressable>
@@ -66,15 +65,14 @@ export function VoiceButton({ onTranscript, large = false }: { onTranscript: (te
 
 const styles = StyleSheet.create({
   button: {
-    minWidth: 64,
-    minHeight: 56,
+    minHeight: 64,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    borderRadius: radius.sm,
+    gap: 4,
+    borderRadius: radius.md,
     backgroundColor: colors.grey,
-    paddingHorizontal: 6,
+    paddingHorizontal: space.sm,
   },
-  large: { flexDirection: 'row', gap: space.sm, paddingHorizontal: space.md, backgroundColor: colors.highlighter, borderWidth: 2, borderColor: colors.ink },
+  large: { flexDirection: 'row', gap: space.sm + 2, minHeight: 64, backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.ink },
   recording: { backgroundColor: colors.stop, borderColor: colors.stop },
 });

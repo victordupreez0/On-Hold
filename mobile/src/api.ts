@@ -31,7 +31,6 @@ import type {
   User,
 } from './types';
 
-const MAP_THRESHOLD = 5; // pitch: an area stays hidden until it has at least 5 reports
 const CIRCULATING_DAYS = 14;
 
 const wait = (ms = 450 + Math.random() * 400) => new Promise((r) => setTimeout(r, ms));
@@ -200,10 +199,9 @@ export async function deleteReport(id: string) {
 export async function listAreaStats(filter: { scamType?: ScamType; channel?: Channel } = {}): Promise<AreaStat[]> {
   await wait();
   const approved = REPORTS.filter((r) => r.status === 'approved');
+  // Suburb-level only (never exact locations); moderation keeps false reports off the map.
   return SUBURBS.flatMap((suburb) => {
-    const inArea = approved.filter((r) => r.suburb === suburb.name);
-    if (inArea.length < MAP_THRESHOLD) return [];
-    const matching = inArea.filter(
+    const matching = approved.filter((r) => r.suburb === suburb.name).filter(
       (r) => (!filter.scamType || r.scamType === filter.scamType) && (!filter.channel || r.channel === filter.channel),
     );
     if (!matching.length) return [];

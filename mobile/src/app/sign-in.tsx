@@ -35,7 +35,7 @@ export default function SignIn() {
   };
 
   return (
-    <Screen footer={<Button label="Sign in" onPress={submit} loading={busy} />}>
+    <Screen edges={['top', 'bottom']} footer={<Button label="Sign in" onPress={submit} loading={busy} />}>
       <Header />
       <T v="title" role="heading">
         Welcome back
