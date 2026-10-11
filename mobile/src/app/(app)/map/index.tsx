@@ -1,130 +1,172 @@
 import { router } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
 import { ScamMap } from '@/components/ScamMap';
-import { Button, Chip, ErrorState, Feather, Loading, Screen, T } from '@/components/ui';
-import { CHANNEL_LABELS, SCAM_LABELS, SUBURBS } from '@/fixtures';
+import { Button, Chip, ErrorState, Feather, Loading, PageTitle, Screen, Section, T } from '@/components/ui';
+import { EXPLAINERS, SCAM_LABELS, SUBURBS } from '@/fixtures';
 import { useUser } from '@/session';
-import { colors, radius, space } from '@/theme';
-import type { Channel, ScamType } from '@/types';
+import { colors, heat, heatRgba, radius, space } from '@/theme';
+import type { AreaStat, ScamType } from '@/types';
 import { useLoad } from '@/useLoad';
 
 const SA = { lat: -29.0, lng: 25.0 };
-const TYPES: ScamType[] = ['bank', 'sassa', 'aarto', 'family', 'courier', 'jobs', 'debicheck', 'investment'];
-const CHANNELS = Object.keys(CHANNEL_LABELS) as Channel[];
+const lower = (s: string) => (/^[A-Z]{2}/.test(s) ? s : s[0].toLowerCase() + s.slice(1));
+const TYPES: ScamType[] = ['aarto', 'bank', 'sassa', 'family', 'courier', 'jobs', 'debicheck', 'investment'];
 
 export default function ScamMapScreen() {
   const user = useUser();
   const [scamType, setScamType] = useState<ScamType | undefined>();
-  const [channel, setChannel] = useState<Channel | undefined>();
   const [selected, setSelected] = useState<string | null>(null);
-  const areas = useLoad(() => api.listAreaStats({ scamType, channel }), `${scamType}|${channel}`);
+  const areas = useLoad(() => api.listAreaStats({ scamType }), scamType ?? 'all');
 
   const home = SUBURBS.find((s) => s.name === user.suburb);
   const center = home ? { lat: home.lat, lng: home.lng, zoomedIn: true } : { ...SA, zoomedIn: false };
-  const total = areas.data?.reduce((n, a) => n + a.count, 0) ?? 0;
+  const max = Math.max(1, ...(areas.data ?? []).map((a) => a.count));
+  const focus = areas.data?.find((a) => a.name === selected);
 
   return (
-    <Screen edges={['top']}>
-      <View style={{ gap: space.xs }}>
-        <T v="title" role="heading">
-          Scams near you
-        </T>
-        <T color={colors.inkSoft}>Reported by people nearby and checked by a moderator. An area appears once it has 5 reports.</T>
+    <Screen>
+      <PageTitle title="Scams near you" subtitle="Where people are reporting scams right now." />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} accessibilityLabel="Filter by type of scam">
+        <Chip label="All scams" selected={!scamType} onPress={() => setScamType(undefined)} />
+        {TYPES.map((t) => (
+          <Chip key={t} label={SCAM_LABELS[t]} selected={scamType === t} onPress={() => setScamType(t)} />
+        ))}
+      </ScrollView>
+
+      <View>
+        <ScamMap areas={areas.data ?? []} selected={selected} onSelect={setSelected} center={center} />
+        <View style={styles.legend} accessibilityLabel="Legend: lighter means fewer reports, deeper orange means more">
+          <T v="small" style={styles.legendText}>
+            Fewer
+          </T>
+          <View style={styles.ramp}>
+            {heat.map((c) => (
+              <View key={c} style={{ flex: 1, backgroundColor: c }} />
+            ))}
+          </View>
+          <T v="small" style={styles.legendText}>
+            More
+          </T>
+        </View>
       </View>
 
-      <View style={{ gap: space.sm }}>
-        <FilterRow label="Type">
-          <Chip label="All types" selected={!scamType} onPress={() => setScamType(undefined)} />
-          {TYPES.map((t) => (
-            <Chip key={t} label={SCAM_LABELS[t]} selected={scamType === t} onPress={() => setScamType(t)} />
-          ))}
-        </FilterRow>
-        <FilterRow label="Channel">
-          <Chip label="Any way" selected={!channel} onPress={() => setChannel(undefined)} />
-          {CHANNELS.map((c) => (
-            <Chip key={c} label={CHANNEL_LABELS[c]} selected={channel === c} onPress={() => setChannel(c)} />
-          ))}
-        </FilterRow>
-      </View>
-
-      <ScamMap areas={areas.data ?? []} selected={selected} onSelect={setSelected} center={center} />
+      {focus && <FocusCard area={focus} onClose={() => setSelected(null)} />}
 
       {areas.error ? (
         <ErrorState message={areas.error} onRetry={areas.reload} />
       ) : !areas.data ? (
         <Loading />
       ) : (
-        <View style={{ gap: space.sm }}>
-          <T v="label" accessibilityLiveRegion="polite">
-            {areas.data.length ? `${total} reports in ${areas.data.length} areas` : 'No areas match these filters yet.'}
-          </T>
-          {areas.data.map((a) => {
-            const on = a.name === selected;
-            return (
-              <Pressable
-                key={a.name}
-                onPress={() => setSelected(a.name)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={`${a.name}, ${a.city}: ${a.count} reports, mostly ${SCAM_LABELS[a.topType]}`}
-                style={[styles.area, on && styles.areaOn]}>
-                <View style={[styles.count, on && { backgroundColor: colors.ink }]}>
-                  <T v="label" color={on ? colors.highlighter : colors.ink}>
-                    {a.count}
-                  </T>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <T v="label">
-                    {a.name}
-                    {a.name === user.suburb ? ' (your area)' : ''}
-                  </T>
-                  <T v="small" color={colors.inkSoft}>
-                    {a.city} · mostly {SCAM_LABELS[a.topType]}
-                  </T>
-                </View>
-                <Feather name="map-pin" size={20} color={colors.ink} />
-              </Pressable>
-            );
-          })}
-        </View>
+        <Section title={areas.data.length ? 'Most reports' : 'No reports yet'}>
+          <View style={styles.list}>
+            {areas.data.map((a) => (
+              <AreaRow key={a.name} area={a} max={max} mine={a.name === user.suburb} selected={a.name === selected} onPress={() => setSelected(a.name)} />
+            ))}
+          </View>
+          <View style={styles.note}>
+            <Feather name="lock" size={16} color={colors.inkSoft} />
+            <T v="small" color={colors.inkSoft} style={{ flex: 1 }}>
+              Shown by suburb only, never exact addresses. Every report is checked before it appears.
+            </T>
+          </View>
+        </Section>
       )}
 
-      <Button label="Report a scam" icon="flag" variant="secondary" onPress={() => router.push('/reports/new')} />
+      <Button label="Report a scam" icon="flag" variant="ghost" onPress={() => router.push('/map/report')} />
     </Screen>
   );
 }
 
-function FilterRow({ label, children }: { label: string; children: ReactNode }) {
+function AreaRow({ area, max, mine, selected, onPress }: { area: AreaStat; max: number; mine: boolean; selected: boolean; onPress: () => void }) {
+  const t = area.count / max;
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} accessibilityLabel={`${label} filter`}>
-      {children}
-    </ScrollView>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${area.name}${mine ? ', your area' : ''}: ${area.count} reports, mostly ${SCAM_LABELS[area.topType]}`}
+      style={({ pressed }) => [styles.row, selected && styles.rowOn, pressed && { backgroundColor: colors.grey }]}>
+      <View style={{ flex: 1, gap: 6 }}>
+        <View style={styles.rowTop}>
+          <T v="label" style={{ flex: 1 }}>
+            {area.name}
+            {mine ? <T v="small" color={colors.inkSoft}>{'  · your area'}</T> : null}
+          </T>
+          <T v="label">{area.count}</T>
+        </View>
+        <View style={styles.track}>
+          <View style={[styles.fill, { width: `${Math.max(t * 100, 6)}%`, backgroundColor: heatRgba(t, 1) }]} />
+        </View>
+        <T v="small" color={colors.inkSoft}>
+          Mostly {lower(SCAM_LABELS[area.topType])}
+        </T>
+      </View>
+    </Pressable>
+  );
+}
+
+function FocusCard({ area, onClose }: { area: AreaStat; onClose: () => void }) {
+  const guide = EXPLAINERS.find((e) => e.scamType === area.topType);
+  return (
+    <View style={styles.focus} accessibilityLiveRegion="polite">
+      <View style={{ flex: 1, gap: 2 }}>
+        <T v="heading">{area.name}</T>
+        <T v="small" color={colors.inkSoft}>
+          {area.count} {area.count === 1 ? 'report' : 'reports'} · mostly {lower(SCAM_LABELS[area.topType])}
+        </T>
+        {guide && (
+          <Pressable onPress={() => router.navigate(`/learn/${guide.slug}`)} accessibilityRole="link" style={styles.focusLink}>
+            <T v="label" style={{ textDecorationLine: 'underline' }}>
+              How to spot it
+            </T>
+            <Feather name="arrow-right" size={18} color={colors.ink} />
+          </Pressable>
+        )}
+      </View>
+      <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close area details" style={styles.close}>
+        <Feather name="x" size={20} color={colors.ink} />
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   chips: { gap: space.sm, paddingRight: space.md },
-  area: {
+  legend: {
+    position: 'absolute',
+    left: space.sm + 4,
+    bottom: space.sm + 4,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: space.sm,
+    backgroundColor: colors.white,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.sm + 4,
+    paddingVertical: 6,
+    zIndex: 1000,
+  },
+  legendText: { fontSize: 13, lineHeight: 16 },
+  ramp: { width: 72, height: 8, borderRadius: 4, overflow: 'hidden', flexDirection: 'row' },
+  list: { gap: space.xs },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: space.sm + 4, paddingHorizontal: space.sm, borderRadius: radius.md },
+  rowOn: { backgroundColor: colors.grey },
+  rowTop: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  track: { height: 8, borderRadius: 4, backgroundColor: colors.grey, overflow: 'hidden' },
+  fill: { height: 8, borderRadius: 4 },
+  note: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.sm },
+  focus: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: space.md,
-    padding: space.md - 4,
-    borderRadius: radius.md,
-    backgroundColor: colors.grey,
-    minHeight: 64,
-  },
-  areaOn: { borderWidth: 2, borderColor: colors.ink },
-  count: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    padding: space.md + 2,
+    borderRadius: radius.lg,
     backgroundColor: colors.highlighter,
-    borderWidth: 2,
-    borderColor: colors.ink,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: -space.sm,
   },
+  focusLink: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 40, alignSelf: 'flex-start' },
+  close: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
 });
