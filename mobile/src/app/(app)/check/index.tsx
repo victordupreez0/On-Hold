@@ -3,14 +3,13 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import * as api from '@/api';
 import { BreathingRing } from '@/components/BreathingRing';
-import { Button, Chip, Feather, Header, Screen, T, type IconName } from '@/components/ui';
+import { Button, Chip, Feather, PageTitle, Screen, T, TextLink, type IconName } from '@/components/ui';
 import { VoiceButton } from '@/components/VoiceButton';
 import { colors, minTouch, radius, space, type } from '@/theme';
-import type { CheckInput } from '@/types';
 import { useOnCall } from '@/useOnCall';
 
 const PAUSE_MS = 3000; // the deliberate pause: never rush a verdict
@@ -26,11 +25,15 @@ type Phase = 'compose' | 'checking' | 'error';
 export default function Ask() {
   const params = useLocalSearchParams<{ mode?: string }>();
   const onCall = useOnCall();
-  const [mode, setMode] = useState<CheckInput['kind']>(params.mode === 'call' || onCall ? 'call' : 'message');
+  // Mode lives in the URL, so Home's "someone on the phone?" link can open Ask straight into call mode.
+  const mode = params.mode === 'call' || onCall ? 'call' : 'message';
+  const setMode = (next: 'call' | 'message') => router.setParams({ mode: next === 'call' ? 'call' : undefined });
+
   const [text, setText] = useState('');
   const [image, setImage] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('compose');
   const [error, setError] = useState<string | null>(null);
+  const [showExamples, setShowExamples] = useState(false);
 
   const canSubmit = text.trim().length > 0 || !!image;
 
@@ -45,7 +48,12 @@ export default function Ask() {
       ]);
       const feel = { stop: Haptics.NotificationFeedbackType.Error, wait: Haptics.NotificationFeedbackType.Warning, safe: Haptics.NotificationFeedbackType.Success };
       Haptics.notificationAsync(feel[result.verdict]).catch(() => {});
-      router.replace(`/check/${result.id}`);
+      // Reset so coming back to the Check tab starts fresh.
+      setText('');
+      setImage(null);
+      setPhase('compose');
+      setShowExamples(false);
+      router.push(`/check/${result.id}`);
     } catch (e) {
       setError((e as Error).message);
       setPhase('error');
@@ -55,7 +63,7 @@ export default function Ask() {
   const paste = async () => {
     const pasted = await Clipboard.getStringAsync().catch(() => '');
     if (pasted) setText((t) => (t ? `${t}\n${pasted}` : pasted));
-    else setError('There’s nothing copied yet. Long-press the message, tap Copy, then come back.');
+    else setError('Nothing is copied yet. Long-press the message, tap Copy, then come back.');
   };
 
   const pickScreenshot = async () => {
@@ -63,202 +71,183 @@ export default function Ask() {
     if (!res.canceled) setImage(res.assets[0].uri);
   };
 
-  if (phase === 'checking') return <Pausing />;
+  const addSpoken = (t: string) => setText((prev) => (prev ? `${prev} ${t}` : t));
 
-  if (phase === 'error') {
+  if (phase === 'checking') return <Pausing />;
+  if (phase === 'error') return <CheckFailed message={error} onRetry={submit} onEdit={() => setPhase('compose')} />;
+
+  const footer = <Button label="Check it" icon="arrow-right" onPress={submit} disabled={!canSubmit} />;
+
+  if (mode === 'call') {
     return (
-      <Screen footer={<Button label="Try again" icon="refresh-cw" onPress={submit} />}>
-        <Header onBack={() => setPhase('compose')} />
-        <View style={styles.errorCard} accessibilityLiveRegion="assertive">
-          <View style={styles.row}>
-            <Feather name="alert-triangle" size={34} color={colors.ink} />
-            <T v="hero" style={{ fontSize: 40 }}>
-              Wait
-            </T>
-          </View>
-          <T v="heading">We couldn’t check this right now.</T>
-          <T>Treat it as Wait: don’t pay or share any codes until you’ve checked with someone you trust.</T>
+      <Screen footer={footer}>
+        <PageTitle title="Help during a call" />
+        <CallBasics />
+        <View style={{ gap: space.sm + 2 }}>
+          <T v="label">What are they saying or asking for?</T>
+          <VoiceButton onTranscript={addSpoken} large />
+          <TextInput
+            value={text}
+            onChangeText={(t) => {
+              setText(t);
+              setError(null);
+            }}
+            multiline
+            placeholder="Or type it, e.g. “He says he’s from my bank and needs the code they sent me”"
+            placeholderTextColor="#8A8A84"
+            accessibilityLabel="What is the caller saying?"
+            style={[styles.input, { minHeight: 110 }]}
+          />
+          <Problem text={error} />
         </View>
-        <T v="small" color={colors.inkSoft}>
-          {error}
-        </T>
-        <Button label="Edit what I sent" variant="ghost" onPress={() => setPhase('compose')} />
+        <TextLink label="I’m not on a call. Check a message instead" onPress={() => setMode('message')} />
       </Screen>
     );
   }
 
   return (
-    <Screen
-      footer={
-        <Composer
-          mode={mode}
-          text={text}
-          onText={(t) => {
-            setText(t);
-            setError(null);
-          }}
-          image={image}
-          onClearImage={() => setImage(null)}
-          onPaste={paste}
-          onScreenshot={pickScreenshot}
-          onTranscript={(t) => setText((prev) => (prev ? `${prev} ${t}` : t))}
-          onSubmit={submit}
-          canSubmit={canSubmit}
-        />
-      }>
-      <Header title={mode === 'call' ? 'Help during a call' : 'Check something'} />
+    <Screen footer={footer}>
+      <PageTitle title="Check something" subtitle="Paste it, share a screenshot or say it out loud." />
 
-      {mode === 'message' ? (
-        <>
-          <Pressable
-            onPress={() => setMode('call')}
-            accessibilityRole="button"
-            accessibilityLabel="Someone on the phone with you right now? Tap here"
-            style={styles.callStrip}>
-            <Feather name="phone-call" size={22} color={colors.ink} />
-            <T v="label" style={{ flex: 1 }}>
-              Someone on the phone with you right now? Tap here.
-            </T>
-            <Feather name="chevron-right" size={22} color={colors.ink} />
-          </Pressable>
-          <T color={colors.inkSoft}>
-            Paste or type the message below, share a screenshot, or tap the microphone and tell us about it.
-          </T>
-          <View style={{ gap: space.sm }}>
-            <T v="label">Not sure how? Try an example</T>
-            <View style={styles.wrap}>
-              {EXAMPLES.map((e) => (
-                <Chip key={e.label} label={e.label} selected={text === e.text} onPress={() => setText(e.text)} />
-              ))}
-            </View>
-          </View>
-        </>
-      ) : (
-        <CallHelp onNotOnCall={() => setMode('message')} />
-      )}
-
-      {error && (
-        <View style={styles.row} accessibilityLiveRegion="polite">
-          <Feather name="info" size={18} color={colors.stop} />
-          <T v="small" color={colors.stop} style={{ flex: 1 }}>
-            {error}
-          </T>
+      <Pressable
+        onPress={() => setMode('call')}
+        accessibilityRole="button"
+        accessibilityLabel="Someone on the phone with you right now? Get help during the call"
+        style={({ pressed }) => [styles.callRow, pressed && { backgroundColor: colors.grey }]}>
+        <View style={styles.callIcon}>
+          <Feather name="phone-call" size={20} color={colors.ink} />
         </View>
+        <T v="label" style={{ flex: 1 }}>
+          Someone on the phone right now?
+        </T>
+        <Feather name="chevron-right" size={22} color={colors.inkSoft} />
+      </Pressable>
+
+      <View style={{ gap: space.sm + 2 }}>
+        <View style={styles.inputWrap}>
+          {image && (
+            <View style={styles.preview}>
+              <Image source={{ uri: image }} style={styles.thumb} accessibilityLabel="Screenshot to check" />
+              <T v="small" style={{ flex: 1 }}>
+                Screenshot added
+              </T>
+              <Pressable onPress={() => setImage(null)} accessibilityRole="button" accessibilityLabel="Remove screenshot" style={styles.iconHit}>
+                <Feather name="x" size={20} color={colors.ink} />
+              </Pressable>
+            </View>
+          )}
+          <TextInput
+            value={text}
+            onChangeText={(t) => {
+              setText(t);
+              setError(null);
+            }}
+            multiline
+            placeholder="Paste or type the message here"
+            placeholderTextColor="#8A8A84"
+            accessibilityLabel="Message to check"
+            style={styles.inputBare}
+          />
+        </View>
+
+        <View style={styles.sources}>
+          <Source icon="clipboard" label="Paste" onPress={paste} />
+          <Source icon="image" label="Screenshot" onPress={pickScreenshot} />
+          <VoiceButton onTranscript={addSpoken} style={{ flex: 1 }} />
+        </View>
+        <Problem text={error} />
+      </View>
+
+      {showExamples ? (
+        <View style={{ gap: space.sm }}>
+          <T v="overline" color={colors.inkSoft}>
+            Try an example
+          </T>
+          <View style={styles.wrap}>
+            {EXAMPLES.map((e) => (
+              <Chip key={e.label} label={e.label} selected={text === e.text} onPress={() => setText(e.text)} />
+            ))}
+          </View>
+        </View>
+      ) : (
+        <TextLink label="Not sure? Try an example" icon="help-circle" onPress={() => setShowExamples(true)} />
       )}
     </Screen>
   );
 }
 
-/** Shown the moment someone says they're on a call: safety basics first, no AI wait. */
-function CallHelp({ onNotOnCall }: { onNotOnCall: () => void }) {
-  const basics: [IconName, string][] = [
-    ['lock', 'Don’t share codes, PINs or passwords.'],
-    ['smartphone', 'Don’t approve anything in your banking app.'],
-    ['phone-off', 'It’s okay to hang up. A real bank or office will understand.'],
-  ];
+function Source({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
   return (
-    <>
-      <View style={styles.callPanel}>
-        <T v="label" color={colors.highlighter}>
-          WHILE YOU’RE ON THE CALL
-        </T>
-        {basics.map(([icon, line]) => (
-          <View key={line} style={styles.row}>
-            <Feather name={icon} size={24} color={colors.highlighter} />
-            <T v="heading" color={colors.white} style={{ flex: 1 }}>
-              {line}
-            </T>
-          </View>
-        ))}
-        <View style={styles.sayThis}>
-          <T v="small" color={colors.ink} style={{ fontFamily: type.label.fontFamily }}>
-            You can say:
-          </T>
-          <T v="heading" style={{ fontFamily: type.title.fontFamily }}>
-            “I’ll phone you back on an official number.”
-          </T>
-        </View>
-      </View>
-      <T color={colors.inkSoft}>Then tell us what they’re saying or asking for. Tap the microphone, or type it below.</T>
-      <Pressable onPress={onNotOnCall} accessibilityRole="button" style={{ minHeight: minTouch, justifyContent: 'center' }}>
-        <T v="label" style={{ textDecorationLine: 'underline' }}>
-          I’m not on a call. Check a message instead.
-        </T>
-      </Pressable>
-    </>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.source, pressed && { transform: [{ scale: 0.97 }] }]}>
+      <Feather name={icon} size={22} color={colors.ink} />
+      <T v="small" style={{ fontSize: 14, lineHeight: 18 }}>
+        {label}
+      </T>
+    </Pressable>
   );
 }
 
-type ComposerProps = {
-  mode: CheckInput['kind'];
-  text: string;
-  onText: (t: string) => void;
-  image: string | null;
-  onClearImage: () => void;
-  onPaste: () => void;
-  onScreenshot: () => void;
-  onTranscript: (t: string) => void;
-  onSubmit: () => void;
-  canSubmit: boolean;
-};
-
-/** Pinned to the bottom like WhatsApp's composer, a pattern older users already know. */
-function Composer(p: ComposerProps) {
+function Problem({ text }: { text: string | null }) {
+  if (!text) return null;
   return (
-    <View style={{ gap: space.sm }}>
-      {p.image && (
-        <View style={styles.preview}>
-          <Image source={{ uri: p.image }} style={styles.thumb} accessibilityLabel="Screenshot to check" />
-          <T v="small" style={{ flex: 1 }}>
-            Screenshot added
+    <View style={styles.problem} accessibilityLiveRegion="polite">
+      <Feather name="info" size={18} color={colors.stop} />
+      <T v="small" color={colors.stop} style={{ flex: 1 }}>
+        {text}
+      </T>
+    </View>
+  );
+}
+
+/** Shown the moment someone says they're on a call: safety basics first, no AI wait. */
+function CallBasics() {
+  const basics: [IconName, string][] = [
+    ['lock', 'Don’t share codes, PINs or passwords.'],
+    ['smartphone', 'Don’t approve anything in your banking app.'],
+    ['phone-off', 'It’s okay to hang up. A real bank will understand.'],
+  ];
+  return (
+    <View style={styles.callPanel}>
+      {basics.map(([icon, line]) => (
+        <View key={line} style={styles.basic}>
+          <Feather name={icon} size={22} color={colors.highlighter} />
+          <T v="label" color={colors.white} style={{ flex: 1, fontSize: 18, lineHeight: 24 }}>
+            {line}
           </T>
-          <Pressable onPress={p.onClearImage} accessibilityRole="button" accessibilityLabel="Remove screenshot" style={styles.toolButton}>
-            <Feather name="x" size={22} color={colors.ink} />
-          </Pressable>
         </View>
-      )}
-      <TextInput
-        value={p.text}
-        onChangeText={p.onText}
-        multiline
-        placeholder={p.mode === 'call' ? 'e.g. “He says he’s from my bank and needs the code they sent me”' : 'Paste or type the message here'}
-        placeholderTextColor="#8A8A84"
-        accessibilityLabel={p.mode === 'call' ? 'What is the caller saying?' : 'Message to check'}
-        style={styles.input}
-      />
-      <View style={styles.tools}>
-        {p.mode === 'message' && (
-          <>
-            <Tool icon="clipboard" label="Paste" onPress={p.onPaste} />
-            <Tool icon="image" label="Screenshot" onPress={p.onScreenshot} />
-          </>
-        )}
-        <VoiceButton onTranscript={p.onTranscript} large={p.mode === 'call'} />
-        <View style={{ flex: 1 }} />
-        <Pressable
-          onPress={p.onSubmit}
-          accessibilityRole="button"
-          accessibilityLabel="Check it"
-          accessibilityState={{ disabled: !p.canSubmit }}
-          style={[styles.send, !p.canSubmit && { opacity: 0.45 }]}>
-          <T v="label" color={colors.white}>
-            Check
-          </T>
-          <Feather name="arrow-right" size={22} color={colors.white} />
-        </Pressable>
+      ))}
+      <View style={styles.sayThis}>
+        <T v="overline">You can say</T>
+        <T v="heading" style={{ fontFamily: type.title.fontFamily }}>
+          “I’ll phone you back on an official number.”
+        </T>
       </View>
     </View>
   );
 }
 
-function Tool({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
+function CheckFailed({ message, onRetry, onEdit }: { message: string | null; onRetry: () => void; onEdit: () => void }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={styles.tool}>
-      <Feather name={icon} size={22} color={colors.ink} />
-      <T v="small" style={{ fontSize: 13, lineHeight: 16 }}>
-        {label}
-      </T>
-    </Pressable>
+    <Screen footer={<Button label="Try again" icon="refresh-cw" onPress={onRetry} />}>
+      <PageTitle title="Couldn’t check that" />
+      <View style={styles.failCard} accessibilityLiveRegion="assertive">
+        <View style={styles.basic}>
+          <Feather name="alert-triangle" size={30} color={colors.ink} />
+          <T v="title">Wait</T>
+        </View>
+        <T>Until you can check it, treat it as a scam: don’t pay or share any codes, and ask someone you trust.</T>
+      </View>
+      {message && (
+        <T v="small" color={colors.inkSoft}>
+          {message}
+        </T>
+      )}
+      <Button label="Edit what I sent" variant="ghost" onPress={onEdit} />
+    </Screen>
   );
 }
 
@@ -272,7 +261,7 @@ function Pausing() {
   }, []);
   return (
     <Screen scroll={false} style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <BreathingRing size={Platform.OS === 'web' ? 220 : 240} durationMs={PAUSE_MS} />
+      <BreathingRing size={230} durationMs={PAUSE_MS} />
       <View style={{ alignItems: 'center', gap: space.sm }} accessibilityLiveRegion="polite">
         <T v="title" style={{ textAlign: 'center' }}>
           Take a breath.
@@ -286,47 +275,38 @@ function Pausing() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 2 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  callStrip: {
+  callRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.sm + 2,
-    minHeight: 60,
+    gap: space.md,
+    minHeight: 64,
     paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    borderWidth: 2,
-    borderColor: colors.ink,
-    backgroundColor: colors.highlighter,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
-  callPanel: { backgroundColor: colors.ink, borderRadius: radius.lg, padding: space.lg - 4, gap: space.md },
-  sayThis: { backgroundColor: colors.highlighter, borderRadius: radius.md, padding: space.md, gap: 2 },
-  errorCard: { backgroundColor: colors.wait, borderRadius: radius.lg, padding: space.lg, gap: space.sm + 2 },
+  callIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.highlighter, alignItems: 'center', justifyContent: 'center' },
+  inputWrap: { borderWidth: 1.5, borderColor: colors.ink, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: colors.white },
+  inputBare: { ...type.body, color: colors.ink, minHeight: 168, paddingHorizontal: space.md, paddingVertical: space.md, textAlignVertical: 'top' },
   input: {
     ...type.body,
     color: colors.ink,
-    minHeight: 96,
-    maxHeight: 200,
-    borderWidth: 2,
-    borderColor: colors.ink,
-    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
     paddingHorizontal: space.md,
-    paddingVertical: space.sm + 4,
+    paddingVertical: space.md - 2,
     textAlignVertical: 'top',
-    backgroundColor: colors.white,
   },
-  tools: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  tool: { minWidth: 64, minHeight: 56, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: radius.sm, backgroundColor: colors.grey, paddingHorizontal: 6 },
-  toolButton: { width: minTouch, height: minTouch, alignItems: 'center', justifyContent: 'center' },
-  send: {
-    minHeight: 56,
-    paddingHorizontal: space.lg - 4,
-    borderRadius: radius.md,
-    backgroundColor: colors.ink,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-  },
-  preview: { flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.grey, borderRadius: radius.md, padding: space.sm },
-  thumb: { width: 48, height: 48, borderRadius: radius.sm, backgroundColor: colors.line },
+  preview: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.sm, paddingLeft: space.sm + 2, backgroundColor: colors.grey },
+  thumb: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: colors.line },
+  iconHit: { width: minTouch, height: minTouch, alignItems: 'center', justifyContent: 'center' },
+  sources: { flexDirection: 'row', gap: space.sm },
+  source: { flex: 1, minHeight: 64, borderRadius: radius.md, backgroundColor: colors.grey, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  problem: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  callPanel: { backgroundColor: colors.ink, borderRadius: radius.lg, padding: space.lg - 4, gap: space.md },
+  basic: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 4 },
+  sayThis: { backgroundColor: colors.highlighter, borderRadius: radius.md, padding: space.md, gap: space.xs },
+  failCard: { backgroundColor: colors.wait, borderRadius: radius.lg, padding: space.lg - 4, gap: space.sm + 2 },
 });

@@ -1,9 +1,9 @@
-import { router, type Href } from 'expo-router';
+import { router } from 'expo-router';
 import { View } from 'react-native';
 
-import { Button, Card, Chip, Feather, Header, Screen, T, Toggle, type IconName } from '@/components/ui';
+import { Button, Card, Chip, Header, ListGroup, ListRow, Screen, Section, T, Toggle } from '@/components/ui';
 import { useSession, useUser } from '@/session';
-import { colors, minTouch, space } from '@/theme';
+import { colors, space } from '@/theme';
 import type { Role } from '@/types';
 
 const ROLES: { role: Role; label: string }[] = [
@@ -17,8 +17,8 @@ export default function Settings() {
   const { update, signOut } = useSession();
 
   return (
-    <Screen footer={<Button label="Sign out" variant="ghost" icon="log-out" onPress={signOut} />}>
-      <Header title="Settings" />
+    <Screen>
+      <Header />
       <View style={{ gap: space.xs }}>
         <T v="title">{user.name}</T>
         <T color={colors.inkSoft}>{user.email}</T>
@@ -33,34 +33,21 @@ export default function Settings() {
         />
       </Card>
 
-      <Card>
-        <LinkRow icon="flag" label="My reports" href="/reports" />
-        {user.role === 'admin' && <LinkRow icon="shield" label="Review reports" href="/admin" />}
-      </Card>
+      <ListGroup>
+        <ListRow icon="flag" title="My reports" subtitle="Scams you’ve reported" onPress={() => router.push('/reports')} />
+        {user.role === 'admin' && <ListRow icon="shield" title="Review reports" subtitle="Approve or reject new reports" onPress={() => router.push('/admin')} />}
+      </ListGroup>
 
       {/* Demo only: lets the milestone demo and usability tests show every role. Removed with Supabase Auth. */}
-      <Card>
-        <T v="label">Preview as (demo)</T>
+      <Section title="Preview as (demo)">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
           {ROLES.map((r) => (
             <Chip key={r.role} label={r.label} selected={user.role === r.role} onPress={() => update({ role: r.role })} />
           ))}
         </View>
-      </Card>
-    </Screen>
-  );
-}
+      </Section>
 
-function LinkRow({ icon, label, href }: { icon: IconName; label: string; href: Href }) {
-  return (
-    <Card onPress={() => router.push(href)} accessibilityLabel={label} style={{ padding: 0 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: minTouch }}>
-        <Feather name={icon} size={22} color={colors.ink} />
-        <T v="label" style={{ flex: 1 }}>
-          {label}
-        </T>
-        <Feather name="chevron-right" size={22} color={colors.ink} />
-      </View>
-    </Card>
+      <Button label="Sign out" variant="ghost" icon="log-out" onPress={signOut} />
+    </Screen>
   );
 }
