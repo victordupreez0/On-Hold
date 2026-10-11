@@ -33,6 +33,13 @@ export const CHANNEL_LABELS: Record<Channel, string> = {
   call: 'Phone call',
 };
 
+export const CHANNEL_ICONS = {
+  sms: 'message-square',
+  whatsapp: 'message-circle',
+  email: 'mail',
+  call: 'phone',
+} as const satisfies Record<Channel, string>;
+
 export const SUBURBS: Suburb[] = [
   { name: 'Soweto', city: 'Johannesburg', lat: -26.2485, lng: 27.854 },
   { name: 'Sandton', city: 'Johannesburg', lat: -26.1076, lng: 28.0567 },
