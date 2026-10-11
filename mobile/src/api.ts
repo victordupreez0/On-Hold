@@ -302,6 +302,9 @@ export async function acceptInvite(code: string, share: { shareCalls: boolean; s
   const link = LINKS.find((l) => l.code === code.trim().toUpperCase() && l.status === 'pending');
   if (!link) throw new Error('This invite has expired or was already used.');
   if (link.guardianId === user.id) throw new Error('You can’t accept your own invite.');
+  if (LINKS.some((l) => l.guardianId === link.guardianId && l.protectedId === user.id)) {
+    throw new Error(`${link.guardianName} is already looking out for you.`);
+  }
   Object.assign(link, { ...share, protectedId: user.id, protectedName: user.name, status: 'active' });
   pushAlert(link, 'invite_accepted');
   return { ...link };
