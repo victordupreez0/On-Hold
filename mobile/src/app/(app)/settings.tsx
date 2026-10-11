@@ -1,6 +1,7 @@
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Button, Card, Header, Screen, T } from '@/components/ui';
+import { Button, Card, Feather, Header, Screen, T } from '@/components/ui';
 import { useSession, useUser } from '@/session';
 import { colors, space } from '@/theme';
 
@@ -30,6 +31,16 @@ export default function Settings() {
           value={user.readAloud}
           onChange={(readAloud) => update({ readAloud })}
         />
+      </Card>
+
+      <Card onPress={() => router.push('/reports')} accessibilityLabel="My reports">
+        <View style={styles.toggle}>
+          <Feather name="flag" size={22} color={colors.ink} />
+          <T v="label" style={{ flex: 1 }}>
+            My reports
+          </T>
+          <Feather name="chevron-right" size={22} color={colors.ink} />
+        </View>
       </Card>
     </Screen>
   );

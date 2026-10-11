@@ -138,6 +138,20 @@ function Result({ check }: { check: CheckResult }) {
         {user.role !== 'guardian' && check.verdict !== 'safe' && (
           <Button label="Tell my family" icon="users" variant="secondary" loading={sending} onPress={tellFamily} />
         )}
+        {check.verdict !== 'safe' && (
+          <Button
+            label="Report this scam"
+            icon="flag"
+            variant="secondary"
+            accessibilityHint="Warn people in your area"
+            onPress={() =>
+              router.push({
+                pathname: '/reports/new',
+                params: { checkId: check.id, scamType: check.scamType ?? 'other', channel: check.kind === 'call' ? 'call' : 'sms' },
+              })
+            }
+          />
+        )}
         <Button label="Done" variant="dark" onPress={home} />
       </View>
 
