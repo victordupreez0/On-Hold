@@ -1,65 +1,72 @@
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as api from '@/api';
-import { Circulating } from '@/components/Circulating';
 import { Logo } from '@/components/Logo';
-import { Card, Feather, Screen, Section, T, timeAgo } from '@/components/ui';
-import { VerdictPill } from '@/components/VerdictBanner';
+import { Feather, ListGroup, ListRow, Screen, Section, T, timeAgo } from '@/components/ui';
+import { EXPLAINERS, SCAM_LABELS } from '@/fixtures';
 import { useUser } from '@/session';
 import { colors, minTouch, radius, space, verdictStyle } from '@/theme';
 import type { User } from '@/types';
 import { useLoad } from '@/useLoad';
+
+const openCheck = (mode?: 'call') => router.navigate(mode ? { pathname: '/check', params: { mode } } : '/check');
 
 export default function Home() {
   const user = useUser();
   return user.simpleMode ? <SimpleHome user={user} /> : <FullHome user={user} />;
 }
 
-function TopBar({ user }: { user: User }) {
+/** One bold brand block with the one thing to do. Everything else is quiet. */
+function Hero({ user }: { user: User }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.topBar}>
-      <Logo size={30} wordmark />
-      <Pressable
-        onPress={() => router.push('/settings')}
-        accessibilityRole="button"
-        accessibilityLabel="Settings and profile"
-        style={styles.avatar}>
-        <T v="label">{user.name.slice(0, 1).toUpperCase()}</T>
-      </Pressable>
-    </View>
-  );
-}
+    <View style={[styles.hero, { paddingTop: insets.top + space.md }]}>
+      <View style={styles.heroTop}>
+        <Logo size={28} onYellow wordmark />
+        <Pressable
+          onPress={() => router.push('/settings')}
+          accessibilityRole="button"
+          accessibilityLabel="Settings and profile"
+          style={({ pressed }) => [styles.avatar, pressed && { opacity: 0.7 }]}>
+          <T v="label">{user.name.slice(0, 1).toUpperCase()}</T>
+        </Pressable>
+      </View>
 
-function HoldCard() {
-  return (
-    <View style={styles.holdCard}>
+      <View style={{ gap: space.xs }}>
+        <T v="display" role="heading">
+          Hi {user.name}
+        </T>
+        <T>Something feel off? Check it before you act.</T>
+      </View>
+
       <Pressable
-        onPress={() => router.push('/check')}
+        onPress={() => openCheck()}
         accessibilityRole="button"
         accessibilityLabel="Check something"
         accessibilityHint="Paste a message, share a screenshot or describe a call"
-        style={({ pressed }) => [styles.holdMain, pressed && { opacity: 0.85 }]}>
-        <Logo size={64} onYellow />
-        <View style={{ flex: 1, gap: 2 }}>
-          <T v="title" style={{ fontSize: 26, lineHeight: 30 }}>
-            Check something
-          </T>
-          <T color={colors.ink}>A message, a screenshot or a call</T>
+        style={({ pressed }) => [styles.checkButton, pressed && { transform: [{ scale: 0.98 }] }]}>
+        <View style={styles.pauseIcon}>
+          <View style={styles.pauseBar} />
+          <View style={styles.pauseBar} />
         </View>
-        <Feather name="arrow-right" size={28} color={colors.ink} />
-      </Pressable>
-      <Pressable
-        onPress={() => router.push({ pathname: '/check', params: { mode: 'call' } })}
-        accessibilityRole="button"
-        accessibilityLabel="Someone on the phone with you now? Get help during the call"
-        style={styles.callRow}>
-        <Feather name="phone-call" size={20} color={colors.ink} />
-        <T v="label" style={{ flex: 1 }}>
-          Someone on the phone with you now?
+        <T v="heading" color={colors.white} style={{ flex: 1, fontFamily: 'AtkinsonHyperlegibleNext_800ExtraBold' }}>
+          Check something
         </T>
-        <Feather name="chevron-right" size={22} color={colors.ink} />
+        <Feather name="arrow-right" size={24} color={colors.white} />
+      </Pressable>
+
+      <Pressable
+        onPress={() => openCheck('call')}
+        accessibilityRole="button"
+        accessibilityLabel="Someone on the phone with you right now? Get help during the call"
+        style={({ pressed }) => [styles.callLink, pressed && { opacity: 0.6 }]}>
+        <Feather name="phone-call" size={20} color={colors.ink} />
+        <T v="label" style={{ textDecorationLine: 'underline' }}>
+          Someone on the phone right now?
+        </T>
       </Pressable>
     </View>
   );
@@ -68,106 +75,76 @@ function HoldCard() {
 function FullHome({ user }: { user: User }) {
   const checks = useLoad(api.listMyChecks);
   const family = useLoad(api.getFamily);
+  const circulating = useLoad(api.listCirculating);
+  const pending = useLoad(() => (user.role === 'admin' ? api.listPendingReports() : Promise.resolve([])), user.role);
+
   const last = checks.data?.[0];
+  const near = circulating.data?.[0];
+  const nearGuide = near && EXPLAINERS.find((e) => e.scamType === near.scamType);
 
   return (
-    <Screen edges={['top']}>
-      <TopBar user={user} />
-      <View style={{ gap: space.xs }}>
-        <T v="title" role="heading">
-          Hi {user.name}
-        </T>
-        <T color={colors.inkSoft}>Something feel off? Check it before you act.</T>
-      </View>
+    <Screen edges={[]} style={{ paddingTop: 0 }}>
+      <Hero user={user} />
 
-      <HoldCard />
-
-      {user.role === 'admin' && <ReviewPrompt />}
-
-      {last && (
-        <Section title="Your last check">
-          <Card onPress={() => router.push(`/check/${last.id}`)} accessibilityLabel={`Last check: ${verdictStyle[last.verdict].word}. ${last.headline}`}>
-            <View style={styles.rowBetween}>
-              <VerdictPill verdict={last.verdict} />
-              <T v="small" color={colors.inkSoft}>
-                {timeAgo(last.createdAt)}
-              </T>
-            </View>
-            <T v="label">{last.headline}</T>
-          </Card>
-        </Section>
-      )}
-
-      {family.data && (
-        <Section title="Family">
-          <FamilySummary user={user} family={family.data} />
-        </Section>
-      )}
-
-      <Circulating limit={3} />
+      <Section title="Today">
+        <ListGroup>
+          {!!pending.data?.length && (
+            <ListRow
+              icon="shield"
+              iconBg={colors.highlighter}
+              title={`${pending.data.length} ${pending.data.length === 1 ? 'report' : 'reports'} to review`}
+              subtitle="Approve real scams so they warn people nearby"
+              onPress={() => router.push('/admin')}
+            />
+          )}
+          {last && (
+            <ListRow
+              icon={verdictStyle[last.verdict].icon}
+              iconBg={verdictStyle[last.verdict].bg}
+              iconColor={verdictStyle[last.verdict].fg}
+              title={last.headline}
+              subtitle={`Your last check · ${verdictStyle[last.verdict].word} · ${timeAgo(last.createdAt)}`}
+              onPress={() => router.navigate(`/check/${last.id}`)}
+            />
+          )}
+          {family.data && <FamilyRow user={user} family={family.data} />}
+          {near && (
+            <ListRow
+              icon="trending-up"
+              title={`Going around: ${SCAM_LABELS[near.scamType]}`}
+              subtitle={near.nearYou ? `${near.nearYou} reports near you this fortnight` : `${near.count} reports this fortnight`}
+              onPress={() => (nearGuide ? router.navigate(`/learn/${nearGuide.slug}`) : router.navigate('/learn'))}
+            />
+          )}
+        </ListGroup>
+      </Section>
     </Screen>
-  );
-}
-
-function ReviewPrompt() {
-  const pending = useLoad(api.listPendingReports);
-  const n = pending.data?.length ?? 0;
-  if (!n) return null;
-  return (
-    <Card onPress={() => router.push('/admin')} accessibilityLabel={`${n} reports waiting for review`}>
-      <View style={styles.row}>
-        <Feather name="shield" size={22} color={colors.ink} />
-        <T v="label" style={{ flex: 1 }}>
-          {n} {n === 1 ? 'report is' : 'reports are'} waiting for review
-        </T>
-        <Feather name="chevron-right" size={22} color={colors.ink} />
-      </View>
-    </Card>
   );
 }
 
 type Family = Awaited<ReturnType<typeof api.getFamily>>;
 
-function FamilySummary({ user, family }: { user: User; family: Family }) {
-  const people = user.role === 'guardian' ? family.lookingAfter : family.lookedAfterBy;
+function FamilyRow({ user, family }: { user: User; family: Family }) {
+  const guardian = user.role === 'guardian';
+  const people = (guardian ? family.lookingAfter : family.lookedAfterBy).filter((l) => l.status === 'active');
   if (!people.length) {
     return (
-      <Card onPress={() => router.push('/family')} accessibilityLabel="Add family">
-        <View style={styles.row}>
-          <Feather name="user-plus" size={22} color={colors.ink} />
-          <View style={{ flex: 1 }}>
-            <T v="label">{user.role === 'guardian' ? 'Invite someone you look out for' : 'Add someone you trust'}</T>
-            <T v="small" color={colors.inkSoft}>
-              {user.role === 'guardian'
-                ? 'You’ll get a heads-up if something looks like a scam. They choose what you see.'
-                : 'They’ll get a heads-up if something looks like a scam. You choose what they see.'}
-            </T>
-          </View>
-        </View>
-      </Card>
+      <ListRow
+        icon="user-plus"
+        title={guardian ? 'Invite someone you look out for' : 'Add someone you trust'}
+        subtitle={guardian ? 'Get a heads-up when they might be getting scammed' : 'They get a heads-up if something looks like a scam'}
+        onPress={() => router.navigate('/family')}
+      />
     );
   }
+  const names = people.map((l) => (guardian ? l.protectedName : l.guardianName)).join(' and ');
   return (
-    <Card onPress={() => router.push('/family')} accessibilityLabel="Open family">
-      {people.map((l) => {
-        const name = user.role === 'guardian' ? l.protectedName : l.guardianName;
-        const status =
-          l.status === 'pending' ? 'Invite sent' : user.role === 'guardian' ? 'Sharing alerts with you' : 'Looking out for you';
-        return (
-          <View key={l.id} style={styles.row}>
-            <View style={styles.personDot}>
-              <T v="label">{name.slice(0, 1)}</T>
-            </View>
-            <View style={{ flex: 1 }}>
-              <T v="label">{name}</T>
-              <T v="small" color={colors.inkSoft}>
-                {status}
-              </T>
-            </View>
-          </View>
-        );
-      })}
-    </Card>
+    <ListRow
+      icon="heart"
+      title={guardian ? `You look out for ${names}` : `${names} ${people.length > 1 ? 'are' : 'is'} looking out for you`}
+      subtitle={guardian ? 'See alerts and status' : 'You choose what they see'}
+      onPress={() => router.navigate('/family')}
+    />
   );
 }
 
@@ -177,30 +154,26 @@ function SimpleHome({ user }: { user: User }) {
   const helper = family.data?.lookedAfterBy.find((l) => l.status === 'active' && l.guardianPhone);
 
   return (
-    <Screen edges={['top', 'bottom']} style={{ alignItems: 'stretch' }}>
-      <View style={styles.rowBetween}>
+    <Screen edges={['top', 'bottom']}>
+      <View style={styles.simpleTop}>
         <T v="title">Hi {user.name}</T>
-        <Pressable onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Settings" style={styles.avatar}>
+        <Pressable onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Settings" style={styles.settingsButton}>
           <Feather name="settings" size={22} color={colors.ink} />
         </Pressable>
       </View>
 
       <Pressable
-        onPress={() => router.push('/check')}
+        onPress={() => openCheck()}
         accessibilityRole="button"
         accessibilityLabel="Check something"
-        style={({ pressed }) => [styles.simpleHold, pressed && { opacity: 0.85 }]}>
+        style={({ pressed }) => [styles.simpleHold, pressed && { transform: [{ scale: 0.98 }] }]}>
         <Logo size={150} onYellow />
         <T v="hero" style={{ textAlign: 'center' }}>
           Check something
         </T>
       </Pressable>
 
-      <Pressable
-        onPress={() => router.push({ pathname: '/check', params: { mode: 'call' } })}
-        accessibilityRole="button"
-        accessibilityLabel="Someone is on the phone with me"
-        style={styles.simpleButton}>
+      <Pressable onPress={() => openCheck('call')} accessibilityRole="button" accessibilityLabel="Someone is on the phone with me" style={styles.simpleButton}>
         <Feather name="phone-call" size={26} color={colors.ink} />
         <T v="heading">Someone is on the phone</T>
       </Pressable>
@@ -210,7 +183,7 @@ function SimpleHome({ user }: { user: User }) {
           onPress={() => Linking.openURL(`tel:${helper.guardianPhone}`)}
           accessibilityRole="button"
           accessibilityLabel={`Call ${helper.guardianName}`}
-          style={[styles.simpleButton, { backgroundColor: colors.ink }]}>
+          style={[styles.simpleButton, { backgroundColor: colors.ink, borderColor: colors.ink }]}>
           <Feather name="phone" size={26} color={colors.white} />
           <T v="heading" color={colors.white}>
             Call {helper.guardianName}
@@ -222,33 +195,51 @@ function SimpleHome({ user }: { user: User }) {
 }
 
 const styles = StyleSheet.create({
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  hero: {
+    backgroundColor: colors.highlighter,
+    marginHorizontal: -(space.lg - 4),
+    paddingHorizontal: space.lg - 4,
+    paddingBottom: space.lg,
+    borderBottomLeftRadius: radius.xl,
+    borderBottomRightRadius: radius.xl,
+    gap: space.lg,
+  },
+  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   avatar: {
     width: minTouch,
     height: minTouch,
     borderRadius: minTouch / 2,
-    backgroundColor: colors.grey,
+    backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  holdCard: { backgroundColor: colors.highlighter, borderRadius: 28, overflow: 'hidden' },
-  holdMain: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg - 4, minHeight: 120 },
-  callRow: {
+  checkButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.sm + 2,
-    minHeight: 56,
+    gap: space.md,
+    minHeight: 72,
     paddingHorizontal: space.lg - 4,
-    borderTopWidth: 2,
-    borderTopColor: colors.highlighterDeep,
+    borderRadius: radius.lg,
+    backgroundColor: colors.ink,
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  personDot: {
+  pauseIcon: {
     width: 44,
     height: 44,
     borderRadius: 22,
     backgroundColor: colors.highlighter,
+    flexDirection: 'row',
+    gap: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pauseBar: { width: 5, height: 16, borderRadius: 3, backgroundColor: colors.ink },
+  callLink: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: minTouch, alignSelf: 'flex-start', marginTop: -space.sm },
+  simpleTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  settingsButton: {
+    width: minTouch,
+    height: minTouch,
+    borderRadius: minTouch / 2,
+    backgroundColor: colors.grey,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -265,7 +256,8 @@ const styles = StyleSheet.create({
   simpleButton: {
     minHeight: 72,
     borderRadius: radius.lg,
-    backgroundColor: colors.grey,
+    borderWidth: 1.5,
+    borderColor: colors.line,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
