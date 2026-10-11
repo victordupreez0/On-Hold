@@ -138,7 +138,9 @@ function FamilySummary({ user, family }: { user: User; family: Family }) {
           <View style={{ flex: 1 }}>
             <T v="label">{user.role === 'guardian' ? 'Invite someone you look out for' : 'Add someone you trust'}</T>
             <T v="small" color={colors.inkSoft}>
-              They’ll get a heads-up if something looks like a scam. You choose what they see.
+              {user.role === 'guardian'
+                ? 'You’ll get a heads-up if something looks like a scam. They choose what you see.'
+                : 'They’ll get a heads-up if something looks like a scam. You choose what they see.'}
             </T>
           </View>
         </View>

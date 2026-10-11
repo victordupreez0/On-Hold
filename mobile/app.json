@@ -8,7 +8,7 @@
     "scheme": "onhold",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "supportsTablet": false
     },
     "android": {
@@ -31,7 +31,7 @@
         {
           "backgroundColor": "#FFE45C",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 120
         }
       ],
       [
@@ -45,7 +45,8 @@
         {
           "photosPermission": "On Hold opens your photos so you can check a screenshot of a suspicious message."
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
