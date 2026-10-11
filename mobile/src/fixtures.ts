@@ -53,10 +53,10 @@ export const SUBURBS: Suburb[] = [
 ];
 
 export const USERS: User[] = [
-  { id: 'u_marie', name: 'Marie', email: 'marie@onhold.test', phone: '0821234567', role: 'protected', simpleMode: false, readAloud: true, suburb: 'Bellville' },
-  { id: 'u_pieter', name: 'Pieter', email: 'pieter@onhold.test', phone: '0839876543', role: 'guardian', simpleMode: false, readAloud: false, suburb: 'Durbanville' },
-  { id: 'u_thabo', name: 'Thabo', email: 'thabo@onhold.test', phone: '0711112222', role: 'protected', simpleMode: false, readAloud: false, suburb: 'Hatfield' },
-  { id: 'u_lerato', name: 'Lerato', email: 'admin@onhold.test', phone: null, role: 'admin', simpleMode: false, readAloud: false, suburb: 'Sandton' },
+  { id: 'u_marie', name: 'Marie', email: 'marie@onhold.test', phone: '0821234567', role: 'protected', simpleMode: false, suburb: 'Bellville' },
+  { id: 'u_pieter', name: 'Pieter', email: 'pieter@onhold.test', phone: '0839876543', role: 'guardian', simpleMode: false, suburb: 'Durbanville' },
+  { id: 'u_thabo', name: 'Thabo', email: 'thabo@onhold.test', phone: '0711112222', role: 'protected', simpleMode: false, suburb: 'Hatfield' },
+  { id: 'u_lerato', name: 'Lerato', email: 'admin@onhold.test', phone: null, role: 'admin', simpleMode: false, suburb: 'Sandton' },
 ];
 
 // Verdict copy. Plain language, never "certainly safe" (pitch: technical challenges).

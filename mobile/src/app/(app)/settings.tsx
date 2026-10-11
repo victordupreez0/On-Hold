@@ -24,13 +24,6 @@ export default function Settings() {
           value={user.simpleMode}
           onChange={(simpleMode) => update({ simpleMode })}
         />
-        <View style={styles.divider} />
-        <Toggle
-          label="Read answers aloud"
-          detail="Hear every verdict spoken out loud."
-          value={user.readAloud}
-          onChange={(readAloud) => update({ readAloud })}
-        />
       </Card>
 
       <Card onPress={() => router.push('/reports')} accessibilityLabel="My reports">
@@ -70,7 +63,6 @@ function Toggle({ label, detail, value, onChange }: { label: string; detail: str
 
 const styles = StyleSheet.create({
   toggle: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 56 },
-  divider: { height: 1, backgroundColor: colors.line, marginVertical: space.xs },
   track: { width: 56, height: 32, borderRadius: 16, backgroundColor: colors.line, padding: 3 },
   trackOn: { backgroundColor: colors.ink },
   knob: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.white },

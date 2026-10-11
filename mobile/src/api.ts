@@ -61,7 +61,6 @@ export async function signUp(input: { name: string; email: string; password: str
     phone: null,
     role: input.role,
     simpleMode: false,
-    readAloud: input.role === 'protected',
     suburb: null,
   };
   USERS.push(user);
@@ -83,7 +82,7 @@ export async function signOut() {
   me = null;
 }
 
-export async function updateProfile(patch: Partial<Pick<User, 'name' | 'phone' | 'simpleMode' | 'readAloud' | 'suburb' | 'role'>>) {
+export async function updateProfile(patch: Partial<Pick<User, 'name' | 'phone' | 'simpleMode' | 'suburb' | 'role'>>) {
   const user = requireUser();
   await wait(250);
   Object.assign(user, patch);

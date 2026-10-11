@@ -1,13 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import * as Speech from 'expo-speech';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
 import { Button, ErrorState, Feather, Header, Loading, Screen, T } from '@/components/ui';
 import { VerdictBanner } from '@/components/VerdictBanner';
 import { useUser } from '@/session';
-import { colors, radius, space, verdictStyle } from '@/theme';
+import { colors, radius, space } from '@/theme';
 import { useToast } from '@/toast';
 import type { CheckResult } from '@/types';
 import { useLoad } from '@/useLoad';
@@ -32,48 +31,10 @@ export default function VerdictScreen() {
   );
 }
 
-function speakable(c: CheckResult) {
-  return [
-    `${verdictStyle[c.verdict].word}. ${c.headline}`,
-    c.sayThis && `You can say: ${c.sayThis}`,
-    `Why: ${c.reasons.join(' ')}`,
-    `What to do now: ${c.nextSteps.join(' ')}`,
-  ]
-    .filter(Boolean)
-    .join(' ');
-}
-
 function Result({ check }: { check: CheckResult }) {
   const user = useUser();
   const toast = useToast();
-  const [speaking, setSpeaking] = useState(false);
   const [sending, setSending] = useState(false);
-
-  const speak = () => {
-    Speech.stop();
-    Speech.speak(speakable(check), {
-      language: 'en-ZA',
-      rate: 0.95,
-      onStart: () => setSpeaking(true),
-      onDone: () => setSpeaking(false),
-      onStopped: () => setSpeaking(false),
-      onError: () => setSpeaking(false),
-    });
-  };
-
-  const stopSpeaking = () => {
-    Speech.stop();
-    setSpeaking(false);
-  };
-
-  useEffect(() => {
-    if (user.readAloud || user.simpleMode) speak();
-    return () => {
-      Speech.stop();
-    };
-    // Speak once when the verdict opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [check.id]);
 
   const tellFamily = async () => {
     setSending(true);
@@ -129,12 +90,6 @@ function Result({ check }: { check: CheckResult }) {
       </View>
 
       <View style={{ gap: space.sm }}>
-        <Button
-          label={speaking ? 'Stop reading' : 'Read this aloud'}
-          icon={speaking ? 'volume-x' : 'volume-2'}
-          variant="secondary"
-          onPress={speaking ? stopSpeaking : speak}
-        />
         {user.role !== 'guardian' && check.verdict !== 'safe' && (
           <Button label="Tell my family" icon="users" variant="secondary" loading={sending} onPress={tellFamily} />
         )}

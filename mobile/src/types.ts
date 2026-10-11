@@ -22,7 +22,6 @@ export type User = {
   phone: string | null;
   role: Role;
   simpleMode: boolean;
-  readAloud: boolean;
   suburb: string | null;
 };
 
