@@ -266,6 +266,8 @@ export function TextLink({ label, onPress }: { label: string; onPress: () => voi
   );
 }
 
+export const hoursSince = (iso: string) => (Date.now() - Date.parse(iso)) / 3_600_000;
+
 export function timeAgo(iso: string) {
   const mins = Math.round((Date.now() - Date.parse(iso)) / 60_000);
   if (mins < 1) return 'just now';
