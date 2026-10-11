@@ -168,6 +168,29 @@ export function Chip({ label, selected, onPress, icon }: { label: string; select
   );
 }
 
+/** A labelled on/off row. One control, so screen readers announce it once. */
+export function Toggle({ label, detail, value, onChange }: { label: string; detail: string; value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <Pressable
+      onPress={() => onChange(!value)}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      accessibilityLabel={label}
+      accessibilityHint={detail}
+      style={styles.toggle}>
+      <View style={{ flex: 1, gap: 2 }}>
+        <T v="label">{label}</T>
+        <T v="small" color={colors.inkSoft}>
+          {detail}
+        </T>
+      </View>
+      <View style={[styles.track, value && styles.trackOn]}>
+        <View style={[styles.knob, value && styles.knobOn]} />
+      </View>
+    </Pressable>
+  );
+}
+
 type FieldProps = TextInputProps & { label: string; error?: string | null; hint?: string };
 
 export function TextField({ label, error, hint, style, multiline, ...rest }: FieldProps) {
@@ -289,6 +312,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   chipOn: { backgroundColor: colors.highlighter, borderColor: colors.ink },
+  toggle: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 56 },
+  track: { width: 56, height: 32, borderRadius: 16, backgroundColor: colors.line, padding: 3 },
+  trackOn: { backgroundColor: colors.ink },
+  knob: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.white },
+  knobOn: { backgroundColor: colors.highlighter, transform: [{ translateX: 24 }] },
   chipOff: { backgroundColor: colors.white, borderColor: colors.line },
   input: {
     ...type.body,
