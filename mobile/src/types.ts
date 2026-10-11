@@ -72,6 +72,7 @@ export type GuardianLink = {
   id: string;
   guardianId: string;
   guardianName: string;
+  guardianPhone: string | null;
   protectedId: string | null;
   protectedName: string;
   invitedPhone: string | null;

@@ -249,9 +249,10 @@ export async function listSuburbs() {
 export async function getFamily() {
   const user = requireUser();
   await wait();
+  const withPhone = (l: GuardianLink) => ({ ...l, guardianPhone: USERS.find((u) => u.id === l.guardianId)?.phone ?? null });
   return {
-    lookingAfter: LINKS.filter((l) => l.guardianId === user.id).map((l) => ({ ...l })),
-    lookedAfterBy: LINKS.filter((l) => l.protectedId === user.id).map((l) => ({ ...l })),
+    lookingAfter: LINKS.filter((l) => l.guardianId === user.id).map(withPhone),
+    lookedAfterBy: LINKS.filter((l) => l.protectedId === user.id).map(withPhone),
   };
 }
 
@@ -276,6 +277,7 @@ export async function createInvite(input: { name: string; phone: string }) {
     id: uid('l'),
     guardianId: user.id,
     guardianName: user.name,
+    guardianPhone: user.phone,
     protectedId: null,
     protectedName: input.name.trim(),
     invitedPhone: input.phone.replace(/\s/g, ''),
