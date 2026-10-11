@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
+import { Circulating } from '@/components/Circulating';
 import { Logo } from '@/components/Logo';
 import { Card, Feather, Screen, Section, T, timeAgo } from '@/components/ui';
 import { VerdictPill } from '@/components/VerdictBanner';
@@ -100,6 +101,8 @@ function FullHome({ user }: { user: User }) {
           <FamilySummary user={user} family={family.data} />
         </Section>
       )}
+
+      <Circulating limit={3} />
     </Screen>
   );
 }
