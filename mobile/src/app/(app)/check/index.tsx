@@ -30,7 +30,7 @@ export default function Ask() {
   const setMode = (next: 'call' | 'message') => router.setParams({ mode: next === 'call' ? 'call' : undefined });
 
   const [text, setText] = useState('');
-  const [image, setImage] = useState<string | null>(null);
+  const [image, setImage] = useState<{ uri: string; base64: string; mediaType: string } | null>(null);
   const [phase, setPhase] = useState<Phase>('compose');
   const [error, setError] = useState<string | null>(null);
   const [showExamples, setShowExamples] = useState(false);
@@ -43,7 +43,7 @@ export default function Ask() {
     setPhase('checking');
     try {
       const [result] = await Promise.all([
-        api.check({ kind: mode, text: text.trim() || undefined, imageUri: image ?? undefined }),
+        api.check({ kind: mode, text: text.trim() || undefined, image: image ? { base64: image.base64, mediaType: image.mediaType } : undefined }),
         new Promise((r) => setTimeout(r, PAUSE_MS)),
       ]);
       const feel = { stop: Haptics.NotificationFeedbackType.Error, wait: Haptics.NotificationFeedbackType.Warning, safe: Haptics.NotificationFeedbackType.Success };
@@ -67,8 +67,11 @@ export default function Ask() {
   };
 
   const pickScreenshot = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
-    if (!res.canceled) setImage(res.assets[0].uri);
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7, base64: true });
+    if (res.canceled) return;
+    const asset = res.assets[0];
+    if (!asset.base64) return setError('Couldn’t read that image. Try a different one.');
+    setImage({ uri: asset.uri, base64: asset.base64, mediaType: asset.mimeType ?? 'image/jpeg' });
   };
 
   const addSpoken = (t: string) => setText((prev) => (prev ? `${prev} ${t}` : t));
@@ -127,7 +130,7 @@ export default function Ask() {
         <View style={styles.inputWrap}>
           {image && (
             <View style={styles.preview}>
-              <Image source={{ uri: image }} style={styles.thumb} accessibilityLabel="Screenshot to check" />
+              <Image source={{ uri: image.uri }} style={styles.thumb} accessibilityLabel="Screenshot to check" />
               <T v="small" style={{ flex: 1 }}>
                 Screenshot added
               </T>
