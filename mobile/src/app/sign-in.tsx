@@ -7,7 +7,7 @@ import { Button, Card, Chip, Header, Screen, T, TextField, TextLink } from '@/co
 import { useSession } from '@/session';
 import { colors, space } from '@/theme';
 
-// Demo accounts for the milestone demo and usability tests; removed when Supabase Auth lands.
+// Demo accounts for the milestone demo and usability tests, seeded by backend/scripts/seed.py.
 const DEMO = [
   { label: 'Marie (protected)', email: 'marie@onhold.test' },
   { label: 'Pieter (guardian)', email: 'pieter@onhold.test' },
@@ -62,7 +62,7 @@ export default function SignIn() {
       <Card>
         <T v="label">Demo accounts</T>
         <T v="small" color={colors.inkSoft}>
-          Pick one, then use any password of 8 or more characters.
+          Pick one, then sign in with the password onhold-demo.
         </T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
           {DEMO.map((d) => (

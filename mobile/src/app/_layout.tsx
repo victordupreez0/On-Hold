@@ -22,10 +22,6 @@ export default function RootLayout() {
     AtkinsonHyperlegibleNext_800ExtraBold,
   });
 
-  useEffect(() => {
-    if (loaded || error) SplashScreen.hideAsync();
-  }, [loaded, error]);
-
   if (!loaded && !error) return null;
 
   return (
@@ -39,7 +35,11 @@ export default function RootLayout() {
 }
 
 function RootStack() {
-  const { user } = useSession();
+  const { user, loading } = useSession();
+  useEffect(() => {
+    if (!loading) SplashScreen.hideAsync();
+  }, [loading]);
+  if (loading) return null;
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.white } }}>
       <Stack.Protected guard={!user}>
