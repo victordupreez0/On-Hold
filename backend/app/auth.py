@@ -18,6 +18,14 @@ def _jwks() -> jwt.PyJWKClient:
     return _jwks_client
 
 
+def warm_up() -> None:
+    """Fetches and caches the signing keys once, at startup -- so the first
+    real request doesn't pay for a cold JWKS fetch (seen locally as a
+    transient 401 on the very first call right after a restart).
+    """
+    _jwks().get_jwk_set()
+
+
 class CurrentUser:
     """The signed-in user's profile row, camelCase-aliased to match types.ts User."""
 

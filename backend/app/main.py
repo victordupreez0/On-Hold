@@ -6,18 +6,27 @@ become a thin fetch layer without touching any screen.
 import random
 import re
 import string
+from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import ai
+from . import ai, auth
 from .auth import CurrentUser, current_user, require_admin
 from .config import get_settings
-from .db import execute, one, query
+from .db import execute, get_pool, one, query
 
-app = FastAPI(title="On Hold API")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    auth.warm_up()  # fetch JWKS once now, not on the first real request
+    get_pool()  # open the DB pool now too, same reason
+    yield
+
+
+app = FastAPI(title="On Hold API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in get_settings().cors_origins.split(",")],
@@ -376,8 +385,8 @@ def remove_link(link_id: str, user: User):
 
 # ---------- Alerts ----------
 
-_ALERT_FIELDS = """id, link_id as "linkId", person_name as "personName", type, check_id as "checkId",
-    detail, seen, created_at as "createdAt" """
+_ALERT_FIELDS = """a.id, link_id as "linkId", person_name as "personName", type, check_id as "checkId",
+    detail, seen, a.created_at as "createdAt" """
 
 
 def _push_alert(link_id: str, person_name: str, alert_type: str, check_id: str | None, detail: str):
@@ -421,10 +430,10 @@ class ModerateInput(BaseModel):
 
 @app.post("/admin/reports/{report_id}/moderate")
 def moderate_report(report_id: str, body: ModerateInput, _: Admin):
+    reject_reason = (body.reason or "").strip() or None if body.decision == "rejected" else None
     row = one(
-        f"""update reports set status = %(decision)s,
-            reject_reason = case when %(decision)s = 'rejected' then %(reason)s else null end
+        f"""update reports set status = %(decision)s, reject_reason = %(reason)s
             where id = %(id)s returning {_REPORT_FIELDS}""",
-        {"decision": body.decision, "reason": (body.reason or "").strip() or None, "id": report_id},
+        {"decision": body.decision, "reason": reject_reason, "id": report_id},
     )
     return _found(row, "That report no longer exists.")
