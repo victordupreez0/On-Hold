@@ -5,10 +5,10 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import * as api from '@/api';
 import { ScamMap } from '@/components/ScamMap';
 import { Button, Chip, ErrorState, Feather, Loading, PageTitle, Screen, Section, T } from '@/components/ui';
-import { EXPLAINERS, SCAM_LABELS, SUBURBS } from '@/fixtures';
+import { SCAM_LABELS } from '@/fixtures';
 import { useUser } from '@/session';
 import { colors, heat, heatRgba, radius, space } from '@/theme';
-import type { AreaStat, ScamType } from '@/types';
+import type { AreaStat, Explainer, ScamType } from '@/types';
 import { useLoad } from '@/useLoad';
 
 const SA = { lat: -29.0, lng: 25.0 };
@@ -20,8 +20,10 @@ export default function ScamMapScreen() {
   const [scamType, setScamType] = useState<ScamType | undefined>();
   const [selected, setSelected] = useState<string | null>(null);
   const areas = useLoad(() => api.listAreaStats({ scamType }), scamType ?? 'all');
+  const suburbs = useLoad(api.listSuburbs);
+  const explainers = useLoad(api.listExplainers);
 
-  const home = SUBURBS.find((s) => s.name === user.suburb);
+  const home = suburbs.data?.find((s) => s.name === user.suburb);
   const center = home ? { lat: home.lat, lng: home.lng, zoomedIn: true } : { ...SA, zoomedIn: false };
   const max = Math.max(1, ...(areas.data ?? []).map((a) => a.count));
   const focus = areas.data?.find((a) => a.name === selected);
@@ -54,7 +56,7 @@ export default function ScamMapScreen() {
         </View>
       </View>
 
-      {focus && <FocusCard area={focus} onClose={() => setSelected(null)} />}
+      {focus && <FocusCard area={focus} explainers={explainers.data ?? []} onClose={() => setSelected(null)} />}
 
       {areas.error ? (
         <ErrorState message={areas.error} onRetry={areas.reload} />
@@ -109,8 +111,8 @@ function AreaRow({ area, max, mine, selected, onPress }: { area: AreaStat; max: 
   );
 }
 
-function FocusCard({ area, onClose }: { area: AreaStat; onClose: () => void }) {
-  const guide = EXPLAINERS.find((e) => e.scamType === area.topType);
+function FocusCard({ area, explainers, onClose }: { area: AreaStat; explainers: Explainer[]; onClose: () => void }) {
+  const guide = explainers.find((e) => e.scamType === area.topType);
   return (
     <View style={styles.focus} accessibilityLiveRegion="polite">
       <View style={{ flex: 1, gap: 2 }}>
