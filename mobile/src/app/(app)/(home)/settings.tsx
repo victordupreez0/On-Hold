@@ -1,13 +1,31 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Button, Card, Header, ListGroup, ListRow, Screen, T, Toggle } from '@/components/ui';
+import { SuburbPicker } from '@/components/SuburbPicker';
+import { Button, Card, Header, ListGroup, ListRow, Screen, T, TextField, Toggle } from '@/components/ui';
 import { useSession, useUser } from '@/session';
 import { colors, space } from '@/theme';
+import { useToast } from '@/toast';
 
 export default function Settings() {
   const user = useUser();
   const { update, signOut } = useSession();
+  const toast = useToast();
+  const [phone, setPhone] = useState(user.phone ?? '');
+
+  const save = async (patch: Parameters<typeof update>[0]) => {
+    try {
+      await update(patch);
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  };
+
+  const savePhone = () => {
+    const trimmed = phone.trim();
+    if (trimmed !== (user.phone ?? '')) save({ phone: trimmed || null });
+  };
 
   return (
     <Screen>
@@ -22,8 +40,25 @@ export default function Settings() {
           label="Simple mode"
           detail="One big button to check something, and one to call family."
           value={user.simpleMode}
-          onChange={(simpleMode) => update({ simpleMode })}
+          onChange={(simpleMode) => save({ simpleMode })}
         />
+      </Card>
+
+      <Card>
+        <T v="label">Your details</T>
+        <T v="small" color={colors.inkSoft}>
+          Your area powers the map and “going around near you”. Your number lets family call you back with one tap.
+        </T>
+        <TextField
+          label="Phone number"
+          value={phone}
+          onChangeText={setPhone}
+          onBlur={savePhone}
+          onSubmitEditing={savePhone}
+          keyboardType="phone-pad"
+          autoComplete="tel"
+        />
+        <SuburbPicker value={user.suburb} onChange={(suburb) => save({ suburb })} />
       </Card>
 
       <ListGroup>

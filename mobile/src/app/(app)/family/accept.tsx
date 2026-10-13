@@ -85,7 +85,7 @@ export default function AcceptInvite() {
           value={shareVerdicts}
           onChange={setShareVerdicts}
         />
-        <Toggle label="Tell them when I check a call" detail="So they can phone you while it’s happening." value={shareCalls} onChange={setShareCalls} />
+        <Toggle label="Tell them when I check a call" detail="Only if that call turns out to be a Stop." value={shareCalls} onChange={setShareCalls} />
       </Card>
 
       <View style={styles.never}>

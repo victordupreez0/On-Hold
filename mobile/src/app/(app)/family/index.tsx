@@ -50,7 +50,7 @@ function GuardianView() {
 
   // Opening the timeline counts as seeing it; unread styling still shows on this visit.
   useEffect(() => {
-    if (alerts.data) api.markAlertsSeen();
+    if (alerts.data) api.markAlertsSeen().catch(() => {});
   }, [alerts.data]);
 
   const invite = <Button label="Invite someone" icon="user-plus" onPress={() => router.push('/family/invite')} />;
@@ -139,17 +139,29 @@ function ProtectedView() {
   const toast = useToast();
 
   const share = async (link: GuardianLink, patch: Partial<Pick<GuardianLink, 'shareCalls' | 'shareVerdicts'>>) => {
-    await api.updateSharing(link.id, { shareCalls: link.shareCalls, shareVerdicts: link.shareVerdicts, ...patch });
-    family.reload();
-    toast('Saved. You can change this any time.');
+    try {
+      await api.updateSharing(link.id, { shareCalls: link.shareCalls, shareVerdicts: link.shareVerdicts, ...patch });
+      toast('Saved. You can change this any time.');
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      // Either way, reload from the server rather than trust the toggle's own optimistic
+      // state -- a consent control should always reflect what's actually saved.
+      family.reload();
+    }
   };
 
   const stop = async (link: GuardianLink) => {
     const ok = await confirm(`Stop sharing with ${link.guardianName}?`, `${link.guardianName} won’t get any more alerts from you.`, 'Stop sharing', true);
     if (!ok) return;
-    await api.removeLink(link.id);
-    family.reload();
-    toast(`${link.guardianName} won’t get alerts any more.`);
+    try {
+      await api.removeLink(link.id);
+      toast(`${link.guardianName} won’t get alerts any more.`);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      family.reload();
+    }
   };
 
   const codeButton = <Button label="I have an invite code" variant="ghost" icon="key" onPress={() => router.push('/family/accept')} />;
@@ -176,7 +188,7 @@ function ProtectedView() {
               <Card>
                 <Toggle label="When I get a Stop" detail="The warning only, never your messages." value={l.shareVerdicts} onChange={(shareVerdicts) => share(l, { shareVerdicts })} />
                 <View style={styles.divider} />
-                <Toggle label="When I check a call" detail="So they can phone you while it’s happening." value={l.shareCalls} onChange={(shareCalls) => share(l, { shareCalls })} />
+                <Toggle label="When I check a call" detail="Only if that call turns out to be a Stop." value={l.shareCalls} onChange={(shareCalls) => share(l, { shareCalls })} />
                 <View style={styles.divider} />
                 <Pressable onPress={() => stop(l)} accessibilityRole="button" style={styles.stopRow}>
                   <T v="label" color={colors.stop}>

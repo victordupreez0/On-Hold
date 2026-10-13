@@ -6,6 +6,7 @@ become a thin fetch layer without touching any screen.
 import random
 import re
 import string
+import uuid
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
@@ -16,7 +17,7 @@ from pydantic import BaseModel, Field
 from . import ai, auth
 from .auth import CurrentUser, current_user, require_admin
 from .config import get_settings
-from .db import execute, get_pool, one, query
+from .db import cursor, execute, get_pool, one, query
 
 
 @asynccontextmanager
@@ -47,6 +48,33 @@ def _found(row: dict | None, message: str) -> dict:
     return row
 
 
+def _require_suburb(name: str | None):
+    if name and not one("select 1 from suburbs where name = %(n)s", {"n": name}):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a suburb from the list.")
+
+
+_MAX_AI_CALLS_PER_HOUR = 30
+
+
+def _check_rate_limit(user_id: str):
+    """Atomic per-user hourly cap on Claude calls (checks + follow-up chat
+    share one budget). A per-user advisory lock serializes concurrent
+    requests from the same user around the count-then-record step, closing
+    the race a plain count-then-insert has under FastAPI's thread pool.
+    Only logs a timestamp -- never call content -- same privacy guarantee
+    as checks themselves.
+    """
+    with cursor() as cur:
+        cur.execute("select pg_advisory_xact_lock(hashtext(%(id)s::text))", {"id": user_id})
+        cur.execute(
+            "select count(*) as n from ai_calls where user_id = %(id)s and created_at > now() - interval '1 hour'",
+            {"id": user_id},
+        )
+        if cur.fetchone()["n"] >= _MAX_AI_CALLS_PER_HOUR:
+            raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You’ve asked a lot just now — try again in a bit.")
+        cur.execute("insert into ai_calls (user_id) values (%(id)s)", {"id": user_id})
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -61,8 +89,8 @@ def get_me(user: User):
 
 
 class ProfilePatch(BaseModel):
-    name: str | None = None
-    phone: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    phone: str | None = Field(default=None, max_length=30)
     simpleMode: bool | None = None
     suburb: str | None = None
 
@@ -73,6 +101,8 @@ _PROFILE_COLUMNS = {"name": "name", "phone": "phone", "simpleMode": "simple_mode
 @app.patch("/me")
 def update_me(body: ProfilePatch, user: User):
     patch = body.model_dump(exclude_unset=True)
+    if "suburb" in patch:
+        _require_suburb(patch["suburb"])
     if patch:
         set_clause = ", ".join(f"{_PROFILE_COLUMNS[k]} = %({k})s" for k in patch)
         execute(f"update profiles set {set_clause} where id = %(id)s", {**patch, "id": user.id})
@@ -87,7 +117,6 @@ def update_me(body: ProfilePatch, user: User):
 
 _CHECK_FIELDS = """id, user_id as "userId", kind, verdict, confidence, scam_type as "scamType",
     headline, reasons, next_steps as "nextSteps", say_this as "sayThis", created_at as "createdAt" """
-_MAX_CHECKS_PER_HOUR = 30
 
 
 class ImageInput(BaseModel):
@@ -97,18 +126,13 @@ class ImageInput(BaseModel):
 
 class CheckInput(BaseModel):
     kind: Literal["message", "call"]
-    text: str | None = None
+    text: str | None = Field(default=None, max_length=4000)
     image: ImageInput | None = None
 
 
 @app.post("/checks")
 def create_check(body: CheckInput, user: User):
-    recent = one(
-        "select count(*) as n from checks where user_id = %(id)s and created_at > now() - interval '1 hour'",
-        {"id": user.id},
-    )
-    if recent and recent["n"] >= _MAX_CHECKS_PER_HOUR:
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You’ve checked a lot just now — try again in a bit.")
+    _check_rate_limit(user.id)
 
     try:
         result = ai.run_check(body.kind, body.text, body.image.model_dump() if body.image else None)
@@ -143,15 +167,16 @@ def list_my_checks(user: User):
 
 
 @app.get("/checks/{check_id}")
-def get_check(check_id: str, user: User):
+def get_check(check_id: uuid.UUID, user: User):
     row = one(f"select {_CHECK_FIELDS} from checks where id = %(id)s and user_id = %(uid)s", {"id": check_id, "uid": user.id})
     return _found(row, "We couldn’t find that check.")
 
 
 @app.post("/checks/{check_id}/alert")
-def alert_guardians(check_id: str, user: User):
+def alert_guardians(check_id: uuid.UUID, user: User):
     """"Tell my family": the person chose to share this one, so it goes regardless of default sharing."""
     check = one(f"select {_CHECK_FIELDS} from checks where id = %(id)s and user_id = %(uid)s", {"id": check_id, "uid": user.id})
+    check = _found(check, "We couldn’t find that check.")
     links = query(
         "select l.id, p.name as guardian_name from guardian_links l join profiles p on p.id = l.guardian_id "
         "where l.protected_id = %(id)s and l.status = 'active'",
@@ -159,8 +184,7 @@ def alert_guardians(check_id: str, user: User):
     )
     if not links:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You haven’t linked any family yet.")
-    scam_word = "message" if not check or check["verdict"] == "safe" else "possible scam"
-    detail = f"Asked you to look at a {scam_word}"
+    detail = f"Asked you to look at a {'message' if check['verdict'] == 'safe' else 'possible scam'}"
     for link in links:
         _push_alert(link["id"], user.row["name"], "asked_for_help", check_id, detail)
     return [link["guardian_name"] for link in links]
@@ -177,9 +201,10 @@ class AskInput(BaseModel):
 
 
 @app.post("/checks/{check_id}/messages")
-def ask_about_check(check_id: str, body: AskInput, user: User):
+def ask_about_check(check_id: uuid.UUID, body: AskInput, user: User):
     check = one(f"select {_CHECK_FIELDS} from checks where id = %(id)s and user_id = %(uid)s", {"id": check_id, "uid": user.id})
     check = _found(check, "We couldn’t find that check.")
+    _check_rate_limit(user.id)
     try:
         answer = ai.ask_about_check(check, [t.model_dump() for t in body.history], body.question)
     except ai.CheckFailed:
@@ -206,9 +231,9 @@ class ReportInput(BaseModel):
     channel: Channel
     scamType: ScamType
     description: str = Field(min_length=10, max_length=1000)
-    sender: str | None = None
+    sender: str | None = Field(default=None, max_length=200)
     suburb: str
-    checkId: str | None = None
+    checkId: uuid.UUID | None = None
 
 
 @app.get("/reports")
@@ -217,13 +242,14 @@ def list_my_reports(user: User):
 
 
 @app.get("/reports/{report_id}")
-def get_report(report_id: str, user: User):
+def get_report(report_id: uuid.UUID, user: User):
     row = one(f"select {_REPORT_FIELDS} from reports where id = %(id)s and reporter_id = %(uid)s", {"id": report_id, "uid": user.id})
     return _found(row, "We couldn’t find that report.")
 
 
 @app.post("/reports")
 def create_report(body: ReportInput, user: User):
+    _require_suburb(body.suburb)
     return one(
         f"""insert into reports (reporter_id, check_id, channel, scam_type, description, sender, suburb)
             values (%(reporterId)s, %(checkId)s, %(channel)s, %(scamType)s, %(description)s, %(sender)s, %(suburb)s)
@@ -233,7 +259,8 @@ def create_report(body: ReportInput, user: User):
 
 
 @app.put("/reports/{report_id}")
-def update_report(report_id: str, body: ReportInput, user: User):
+def update_report(report_id: uuid.UUID, body: ReportInput, user: User):
+    _require_suburb(body.suburb)
     # Edited reports go back to review so an approved report can't be changed into something abusive.
     row = one(
         f"""update reports set channel = %(channel)s, scam_type = %(scamType)s, description = %(description)s,
@@ -246,7 +273,7 @@ def update_report(report_id: str, body: ReportInput, user: User):
 
 
 @app.delete("/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_report(report_id: str, user: User):
+def delete_report(report_id: uuid.UUID, user: User):
     row = one("delete from reports where id = %(id)s and reporter_id = %(uid)s returning id", {"id": report_id, "uid": user.id})
     _found(row, "We couldn’t find that report.")
 
@@ -327,7 +354,7 @@ def create_invite(body: InviteInput, user: User):
 @app.get("/invites/{code}")
 def get_invite(code: str):
     row = one(
-        f"select {_LINK_FIELDS} {_LINK_JOIN} where l.code = %(code)s and l.status = 'pending'",
+        f"select {_LINK_FIELDS} {_LINK_JOIN} where l.code = %(code)s and l.status = 'pending' and l.created_at > now() - interval '7 days'",
         {"code": code.strip().upper()},
     )
     row = _found(row, "This invite has expired or was already used.")
@@ -341,7 +368,7 @@ class ShareInput(BaseModel):
 
 @app.post("/invites/{code}/accept")
 def accept_invite(code: str, body: ShareInput, user: User):
-    link = one(f"select {_LINK_FIELDS} {_LINK_JOIN} where l.code = %(code)s and l.status = 'pending'", {"code": code.strip().upper()})
+    link = one(f"select {_LINK_FIELDS} {_LINK_JOIN} where l.code = %(code)s and l.status = 'pending' and l.created_at > now() - interval '7 days'", {"code": code.strip().upper()})
     link = _found(link, "This invite has expired or was already used.")
     if link["guardianId"] == user.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can’t accept your own invite.")
@@ -364,7 +391,7 @@ def accept_invite(code: str, body: ShareInput, user: User):
 
 
 @app.patch("/links/{link_id}")
-def update_sharing(link_id: str, body: ShareInput, user: User):
+def update_sharing(link_id: uuid.UUID, body: ShareInput, user: User):
     row = one(
         f"""update guardian_links l set share_calls = %(shareCalls)s, share_verdicts = %(shareVerdicts)s
             {_LINK_UPDATE_FROM} and l.id = %(id)s and l.protected_id = %(uid)s
@@ -375,7 +402,7 @@ def update_sharing(link_id: str, body: ShareInput, user: User):
 
 
 @app.delete("/links/{link_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_link(link_id: str, user: User):
+def remove_link(link_id: uuid.UUID, user: User):
     row = one(
         "delete from guardian_links where id = %(id)s and (protected_id = %(uid)s or guardian_id = %(uid)s) returning id",
         {"id": link_id, "uid": user.id},
@@ -429,7 +456,7 @@ class ModerateInput(BaseModel):
 
 
 @app.post("/admin/reports/{report_id}/moderate")
-def moderate_report(report_id: str, body: ModerateInput, _: Admin):
+def moderate_report(report_id: uuid.UUID, body: ModerateInput, _: Admin):
     reject_reason = (body.reason or "").strip() or None if body.decision == "rejected" else None
     row = one(
         f"""update reports set status = %(decision)s, reject_reason = %(reason)s
