@@ -10,8 +10,10 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from pydantic import BaseModel, Field
 
 from . import ai, auth
@@ -37,6 +39,8 @@ app.add_middleware(
 
 Channel = Literal["sms", "whatsapp", "email", "call"]
 ScamType = Literal["bank", "sassa", "sars", "aarto", "family", "courier", "jobs", "debicheck", "investment", "other"]
+Role = Literal["protected", "guardian", "admin"]
+ReportStatus = Literal["pending", "approved", "rejected"]
 
 User = Annotated[CurrentUser, Depends(current_user)]
 Admin = Annotated[CurrentUser, Depends(require_admin)]
@@ -442,12 +446,95 @@ def mark_alerts_seen(user: User):
     return {"ok": True}
 
 
-# ---------- Admin ----------
+# ---------- Admin: dashboard ----------
+
+_ACTIVITY_SQL = """
+    (select 'check' as type, id::text as id, headline as summary, created_at as "createdAt" from checks)
+    union all
+    (select 'report' as type, id::text as id, description as summary, created_at as "createdAt" from reports)
+    union all
+    (select 'signup' as type, id::text as id, name as summary, created_at as "createdAt" from profiles)
+    order by "createdAt" desc
+    limit 20
+"""
+
+_TREND_SQL = """
+    select to_char(d.day, 'YYYY-MM-DD') as date, coalesce(r.n, 0) as count
+    from generate_series(current_date - interval '13 days', current_date, interval '1 day') as d(day)
+    left join (
+        select date_trunc('day', created_at)::date as day, count(*) as n
+        from reports where created_at > now() - interval '14 days'
+        group by day
+    ) r on r.day = d.day
+    order by d.day
+"""
 
 
-@app.get("/admin/reports/pending")
-def list_pending_reports(_: Admin):
-    return query(f"select {_REPORT_FIELDS} from reports where status = 'pending' order by created_at desc")
+@app.get("/admin/dashboard")
+def admin_dashboard(_: Admin):
+    users_by_role = {"protected": 0, "guardian": 0, "admin": 0}
+    for r in query("select role, count(*) as n from profiles group by role"):
+        users_by_role[r["role"]] = r["n"]
+
+    checks_by_verdict = {"stop": 0, "wait": 0, "safe": 0}
+    for r in query("select verdict, count(*) as n from checks group by verdict"):
+        checks_by_verdict[r["verdict"]] = r["n"]
+
+    reports_by_status = {"pending": 0, "approved": 0, "rejected": 0}
+    for r in query("select status, count(*) as n from reports group by status"):
+        reports_by_status[r["status"]] = r["n"]
+
+    checks_last_7_days = one("select count(*) as n from checks where created_at > now() - interval '7 days'")["n"]
+    ai_calls_last_24h = one("select count(*) as n from ai_calls where created_at > now() - interval '24 hours'")["n"]
+
+    return {
+        "users": {"total": sum(users_by_role.values()), "byRole": users_by_role},
+        "checks": {"total": sum(checks_by_verdict.values()), "byVerdict": checks_by_verdict, "last7Days": checks_last_7_days},
+        "reports": {"total": sum(reports_by_status.values()), "byStatus": reports_by_status},
+        "aiCallsLast24h": ai_calls_last_24h,
+        "trend": query(_TREND_SQL),
+        "activity": query(_ACTIVITY_SQL),
+    }
+
+
+# ---------- Admin: reports (full CRUD + moderation) ----------
+
+_ADMIN_REPORT_FIELDS = _REPORT_FIELDS + ', moderated_by as "moderatedBy", moderated_at as "moderatedAt"'
+
+
+@app.get("/admin/reports")
+def list_all_reports(
+    _: Admin, status: ReportStatus | None = None, scamType: ScamType | None = None, search: str | None = None, limit: int = 50, offset: int = 0
+):
+    pattern = f"%{search}%" if search else None
+    return query(
+        f"""select {_ADMIN_REPORT_FIELDS} from reports
+            where (%(status)s::report_status is null or status = %(status)s::report_status)
+              and (%(scamType)s::scam_type is null or scam_type = %(scamType)s::scam_type)
+              and (%(pattern)s::text is null or description ilike %(pattern)s)
+            order by created_at desc
+            limit %(limit)s offset %(offset)s""",
+        {"status": status, "scamType": scamType, "pattern": pattern, "limit": limit, "offset": offset},
+    )
+
+
+@app.put("/admin/reports/{report_id}")
+def admin_update_report(report_id: uuid.UUID, body: ReportInput, _: Admin):
+    """Unlike a reporter's own edit, an admin correction doesn't reset status to pending -- it IS the review."""
+    _require_suburb(body.suburb)
+    row = one(
+        f"""update reports set channel = %(channel)s, scam_type = %(scamType)s, description = %(description)s,
+            sender = %(sender)s, suburb = %(suburb)s
+            where id = %(id)s returning {_ADMIN_REPORT_FIELDS}""",
+        {**body.model_dump(), "id": report_id, "sender": (body.sender or "").strip() or None},
+    )
+    return _found(row, "That report no longer exists.")
+
+
+@app.delete("/admin/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_report(report_id: uuid.UUID, _: Admin):
+    row = one("delete from reports where id = %(id)s returning id", {"id": report_id})
+    _found(row, "That report no longer exists.")
 
 
 class ModerateInput(BaseModel):
@@ -456,11 +543,194 @@ class ModerateInput(BaseModel):
 
 
 @app.post("/admin/reports/{report_id}/moderate")
-def moderate_report(report_id: uuid.UUID, body: ModerateInput, _: Admin):
+def moderate_report(report_id: uuid.UUID, body: ModerateInput, admin: Admin):
     reject_reason = (body.reason or "").strip() or None if body.decision == "rejected" else None
     row = one(
-        f"""update reports set status = %(decision)s, reject_reason = %(reason)s
-            where id = %(id)s returning {_REPORT_FIELDS}""",
-        {"decision": body.decision, "reason": reject_reason, "id": report_id},
+        f"""update reports set status = %(decision)s, reject_reason = %(reason)s,
+            moderated_by = %(adminId)s, moderated_at = now()
+            where id = %(id)s returning {_ADMIN_REPORT_FIELDS}""",
+        {"decision": body.decision, "reason": reject_reason, "id": report_id, "adminId": admin.id},
     )
     return _found(row, "That report no longer exists.")
+
+
+# ---------- Admin: users ----------
+
+_USER_FIELDS = """id, name, email, phone, role, simple_mode as "simpleMode", suburb, created_at as "createdAt" """
+
+
+@app.get("/admin/users")
+def list_users(_: Admin, search: str | None = None, role: Role | None = None, limit: int = 50, offset: int = 0):
+    pattern = f"%{search}%" if search else None
+    return query(
+        f"""select {_USER_FIELDS} from profiles
+            where (%(pattern)s::text is null or name ilike %(pattern)s or email ilike %(pattern)s)
+              and (%(role)s::role is null or role = %(role)s::role)
+            order by created_at desc
+            limit %(limit)s offset %(offset)s""",
+        {"pattern": pattern, "role": role, "limit": limit, "offset": offset},
+    )
+
+
+def _is_last_admin(user_id: uuid.UUID) -> bool:
+    target = one("select role from profiles where id = %(id)s", {"id": user_id})
+    if not target or target["role"] != "admin":
+        return False
+    remaining = one("select count(*) as n from profiles where role = 'admin' and id != %(id)s", {"id": user_id})
+    return remaining["n"] == 0
+
+
+class RoleInput(BaseModel):
+    role: Role
+
+
+@app.patch("/admin/users/{user_id}")
+def update_user_role(user_id: uuid.UUID, body: RoleInput, admin: Admin):
+    if user_id == admin.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can’t change your own role.")
+    if body.role != "admin" and _is_last_admin(user_id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Can’t remove the last admin.")
+    row = one(f"update profiles set role = %(role)s where id = %(id)s returning {_USER_FIELDS}", {"role": body.role, "id": user_id})
+    return _found(row, "We couldn’t find that user.")
+
+
+@app.delete("/admin/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: uuid.UUID, admin: Admin):
+    if user_id == admin.id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can’t delete your own account.")
+    if not one("select 1 from profiles where id = %(id)s", {"id": user_id}):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "We couldn’t find that user.")
+    if _is_last_admin(user_id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Can’t delete the last admin.")
+    # Deleting only the profile row would orphan a still-signable-in auth account;
+    # deleting the auth user cascades to profiles (and from there to their checks,
+    # reports, guardian links and alerts).
+    settings = get_settings()
+    res = httpx.delete(
+        f"{settings.supabase_url}/auth/v1/admin/users/{user_id}",
+        headers={"apikey": settings.supabase_service_role_key, "Authorization": f"Bearer {settings.supabase_service_role_key}"},
+    )
+    if res.status_code not in (200, 204):
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Couldn’t delete that account right now.")
+
+
+# ---------- Admin: explainers (Learn content) ----------
+
+_EXPLAINER_FIELDS = """id, slug, scam_type as "scamType", title, summary,
+    example_channel as "exampleChannel", example_text as "exampleText",
+    signs, what_to_do as "whatToDo", source_name as "sourceName", source_url as "sourceUrl" """
+
+
+def _shape_explainer(row: dict) -> dict:
+    return {
+        "id": row["id"],
+        "slug": row["slug"],
+        "scamType": row["scamType"],
+        "title": row["title"],
+        "summary": row["summary"],
+        "example": {"channel": row["exampleChannel"], "text": row["exampleText"]},
+        "signs": row["signs"],
+        "whatToDo": row["whatToDo"],
+        "source": {"name": row["sourceName"], "url": row["sourceUrl"]},
+    }
+
+
+@app.get("/explainers")
+def list_explainers():
+    return [_shape_explainer(r) for r in query(f"select {_EXPLAINER_FIELDS} from explainers order by title")]
+
+
+@app.get("/explainers/{slug}")
+def get_explainer(slug: str):
+    row = one(f"select {_EXPLAINER_FIELDS} from explainers where slug = %(slug)s", {"slug": slug})
+    return _shape_explainer(_found(row, "We couldn’t find that guide."))
+
+
+class ExplainerInput(BaseModel):
+    slug: str = Field(min_length=1, max_length=60, pattern=r"^[a-z0-9-]+$")
+    scamType: ScamType
+    title: str = Field(min_length=1, max_length=200)
+    summary: str = Field(min_length=1, max_length=500)
+    exampleChannel: Channel
+    exampleText: str = Field(min_length=1, max_length=1000)
+    signs: list[str] = Field(min_length=1, max_length=10)
+    whatToDo: list[str] = Field(min_length=1, max_length=10)
+    sourceName: str = Field(min_length=1, max_length=200)
+    sourceUrl: str = Field(min_length=1, max_length=500)
+
+
+@app.post("/admin/explainers")
+def create_explainer(body: ExplainerInput, _: Admin):
+    try:
+        row = one(
+            f"""insert into explainers (slug, scam_type, title, summary, example_channel, example_text, signs, what_to_do, source_name, source_url)
+                values (%(slug)s, %(scamType)s, %(title)s, %(summary)s, %(exampleChannel)s, %(exampleText)s, %(signs)s, %(whatToDo)s, %(sourceName)s, %(sourceUrl)s)
+                returning {_EXPLAINER_FIELDS}""",
+            body.model_dump(),
+        )
+    except UniqueViolation:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That slug is already used.")
+    return _shape_explainer(row)
+
+
+@app.put("/admin/explainers/{explainer_id}")
+def update_explainer(explainer_id: uuid.UUID, body: ExplainerInput, _: Admin):
+    try:
+        row = one(
+            f"""update explainers set slug = %(slug)s, scam_type = %(scamType)s, title = %(title)s, summary = %(summary)s,
+                example_channel = %(exampleChannel)s, example_text = %(exampleText)s, signs = %(signs)s, what_to_do = %(whatToDo)s,
+                source_name = %(sourceName)s, source_url = %(sourceUrl)s
+                where id = %(id)s returning {_EXPLAINER_FIELDS}""",
+            {**body.model_dump(), "id": explainer_id},
+        )
+    except UniqueViolation:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That slug is already used.")
+    return _shape_explainer(_found(row, "We couldn’t find that guide."))
+
+
+@app.delete("/admin/explainers/{explainer_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_explainer(explainer_id: uuid.UUID, _: Admin):
+    row = one("delete from explainers where id = %(id)s returning id", {"id": explainer_id})
+    _found(row, "We couldn’t find that guide.")
+
+
+# ---------- Admin: suburbs ----------
+
+
+class SuburbCreateInput(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    city: str = Field(min_length=1, max_length=100)
+    lat: float
+    lng: float
+
+
+class SuburbUpdateInput(BaseModel):
+    city: str = Field(min_length=1, max_length=100)
+    lat: float
+    lng: float
+
+
+@app.post("/admin/suburbs")
+def create_suburb(body: SuburbCreateInput, _: Admin):
+    try:
+        return one("insert into suburbs (name, city, lat, lng) values (%(name)s, %(city)s, %(lat)s, %(lng)s) returning name, city, lat, lng", body.model_dump())
+    except UniqueViolation:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "A suburb with that name already exists.")
+
+
+@app.put("/admin/suburbs/{name}")
+def update_suburb(name: str, body: SuburbUpdateInput, _: Admin):
+    row = one(
+        "update suburbs set city = %(city)s, lat = %(lat)s, lng = %(lng)s where name = %(name)s returning name, city, lat, lng",
+        {**body.model_dump(), "name": name},
+    )
+    return _found(row, "We couldn’t find that suburb.")
+
+
+@app.delete("/admin/suburbs/{name}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_suburb(name: str, _: Admin):
+    try:
+        row = one("delete from suburbs where name = %(name)s returning name", {"name": name})
+    except ForeignKeyViolation:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Can’t delete — people or reports still use this suburb.")
+    _found(row, "We couldn’t find that suburb.")
