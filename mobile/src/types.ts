@@ -25,7 +25,11 @@ export type User = {
   suburb: string | null;
 };
 
-export type CheckInput = { kind: 'message' | 'call'; text?: string; imageUri?: string };
+export type CheckInput = {
+  kind: 'message' | 'call';
+  text?: string;
+  image?: { base64: string; mediaType: string };
+};
 
 export type CheckResult = {
   id: string;
