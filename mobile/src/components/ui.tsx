@@ -41,10 +41,13 @@ type ScreenProps = {
   edges?: ('top' | 'bottom')[];
   style?: StyleProp<ViewStyle>;
   background?: string;
+  /** Admin screens only: a wider column for tables/grids, instead of the
+   * 560px cap every other screen uses so the web preview reads like a phone. */
+  wide?: boolean;
 };
 
 /** Safe-area page with a centred max width, so the web preview reads like a phone. */
-export function Screen({ children, scroll = true, footer, edges = ['top'], style, background = colors.white }: ScreenProps) {
+export function Screen({ children, scroll = true, footer, edges = ['top'], style, background = colors.white, wide = false }: ScreenProps) {
   const body = scroll ? (
     <ScrollView contentContainerStyle={[styles.pad, style]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       {children}
@@ -54,7 +57,7 @@ export function Screen({ children, scroll = true, footer, edges = ['top'], style
   );
   return (
     <SafeAreaView edges={edges} style={{ flex: 1, backgroundColor: background }}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.column}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.column, wide && styles.columnWide]}>
         {body}
         {footer && <View style={styles.footer}>{footer}</View>}
       </KeyboardAvoidingView>
@@ -376,6 +379,7 @@ export function timeAgo(iso: string) {
 
 const styles = StyleSheet.create({
   column: { flex: 1, width: '100%', maxWidth: 560, alignSelf: 'center' },
+  columnWide: { maxWidth: 960 },
   pad: { paddingHorizontal: space.lg - 4, paddingTop: space.sm, paddingBottom: space.xxl, gap: space.lg + 4, flexGrow: 1 },
   footer: { paddingHorizontal: space.lg - 4, paddingTop: space.sm, paddingBottom: space.md, gap: space.sm },
   pageTitle: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingTop: space.sm },
