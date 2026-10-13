@@ -142,6 +142,7 @@ create index guardian_links_protected_id_idx on guardian_links (protected_id);
 create table alerts (
   id uuid primary key default gen_random_uuid(),
   link_id uuid not null references guardian_links (id) on delete cascade,
+  person_name text not null,
   type alert_type not null,
   check_id uuid references checks (id) on delete set null,
   detail text not null,
