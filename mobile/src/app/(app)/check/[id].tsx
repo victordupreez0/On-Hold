@@ -3,12 +3,12 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
-import { Button, ErrorState, Feather, Header, Loading, Screen, Section, T } from '@/components/ui';
+import { Button, ErrorState, Feather, Header, Loading, Screen, Section, T, TextField } from '@/components/ui';
 import { VerdictBanner } from '@/components/VerdictBanner';
 import { useUser } from '@/session';
 import { colors, minTouch, radius, space } from '@/theme';
 import { useToast } from '@/toast';
-import type { CheckResult } from '@/types';
+import type { ChatTurn, CheckResult } from '@/types';
 import { useLoad } from '@/useLoad';
 
 export default function VerdictScreen() {
@@ -131,10 +131,68 @@ function Result({ check }: { check: CheckResult }) {
         )}
       </View>
 
+      <AskFollowUp checkId={check.id} />
+
       <T v="small" color={colors.inkSoft} style={{ textAlign: 'center' }}>
         On Hold can make mistakes. If something still feels wrong, trust that feeling.
       </T>
     </>
+  );
+}
+
+/** A short, human follow-up chat grounded in this verdict. Nothing here is saved -- it lives only
+ * as long as this screen is open, same as the message you checked never was. */
+function AskFollowUp({ checkId }: { checkId: string }) {
+  const [messages, setMessages] = useState<ChatTurn[]>([]);
+  const [question, setQuestion] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const ask = async () => {
+    const text = question.trim();
+    if (!text || busy) return;
+    setQuestion('');
+    setError(null);
+    const history = [...messages, { role: 'user', content: text } satisfies ChatTurn];
+    setMessages(history);
+    setBusy(true);
+    try {
+      const answer = await api.askAboutCheck(checkId, text, messages);
+      setMessages([...history, { role: 'assistant', content: answer }]);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section title="Still wondering something?">
+      {messages.length > 0 && (
+        <View style={{ gap: space.sm }}>
+          {messages.map((m, i) => (
+            <View key={i} style={[styles.bubble, m.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}>
+              <T color={m.role === 'user' ? colors.white : colors.ink}>{m.content}</T>
+            </View>
+          ))}
+        </View>
+      )}
+      {busy && (
+        <View style={[styles.bubble, styles.bubbleAssistant]}>
+          <T color={colors.inkSoft}>Thinking…</T>
+        </View>
+      )}
+      <TextField
+        label="Ask a follow-up question"
+        placeholder="E.g. “What if they call again?”"
+        value={question}
+        onChangeText={setQuestion}
+        onSubmitEditing={ask}
+        error={error}
+        returnKeyType="send"
+      />
+      <Button label="Ask" icon="send" variant="ghost" loading={busy} disabled={!question.trim()} onPress={ask} />
+    </Section>
   );
 }
 
@@ -154,4 +212,7 @@ const styles = StyleSheet.create({
   whyBody: { paddingHorizontal: space.md, paddingBottom: space.md, gap: space.sm + 2 },
   reason: { flexDirection: 'row', gap: space.sm + 4, alignItems: 'flex-start' },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.ink, marginTop: 9, marginLeft: 6 },
+  bubble: { borderRadius: radius.lg, padding: space.sm + 4, maxWidth: '88%' },
+  bubbleUser: { backgroundColor: colors.ink, alignSelf: 'flex-end' },
+  bubbleAssistant: { backgroundColor: colors.grey, alignSelf: 'flex-start' },
 });
