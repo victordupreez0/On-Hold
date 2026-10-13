@@ -518,6 +518,12 @@ def list_all_reports(
     )
 
 
+@app.get("/admin/reports/{report_id}")
+def admin_get_report(report_id: uuid.UUID, _: Admin):
+    row = one(f"select {_ADMIN_REPORT_FIELDS} from reports where id = %(id)s", {"id": report_id})
+    return _found(row, "That report no longer exists.")
+
+
 @app.put("/admin/reports/{report_id}")
 def admin_update_report(report_id: uuid.UUID, body: ReportInput, _: Admin):
     """Unlike a reporter's own edit, an admin correction doesn't reset status to pending -- it IS the review."""
@@ -570,6 +576,12 @@ def list_users(_: Admin, search: str | None = None, role: Role | None = None, li
             limit %(limit)s offset %(offset)s""",
         {"pattern": pattern, "role": role, "limit": limit, "offset": offset},
     )
+
+
+@app.get("/admin/users/{user_id}")
+def get_user(user_id: uuid.UUID, _: Admin):
+    row = one(f"select {_USER_FIELDS} from profiles where id = %(id)s", {"id": user_id})
+    return _found(row, "We couldn’t find that user.")
 
 
 def _is_last_admin(user_id: uuid.UUID) -> bool:

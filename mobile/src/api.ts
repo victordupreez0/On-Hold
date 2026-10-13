@@ -245,6 +245,10 @@ export async function listAllReports(filter: { status?: Report['status']; scamTy
   return get<AdminReport[]>(`/admin/reports${qs ? `?${qs}` : ''}`);
 }
 
+export async function getAdminReport(id: string) {
+  return get<AdminReport>(`/admin/reports/${id}`);
+}
+
 export async function adminUpdateReport(id: string, input: ReportInput) {
   return put<AdminReport>(`/admin/reports/${id}`, input);
 }
@@ -263,6 +267,10 @@ export async function listUsers(filter: { search?: string; role?: Role; limit?: 
   if (filter.offset) params.set('offset', String(filter.offset));
   const qs = params.toString();
   return get<AdminUser[]>(`/admin/users${qs ? `?${qs}` : ''}`);
+}
+
+export async function getUser(id: string) {
+  return get<AdminUser>(`/admin/users/${id}`);
 }
 
 export async function updateUserRole(id: string, role: Role) {
