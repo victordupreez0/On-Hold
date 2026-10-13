@@ -72,6 +72,41 @@ def test_call_verdict_falls_back_to_generic_say_this(monkeypatch):
     assert result["sayThis"] == ai.GENERIC_SAY
 
 
+def test_ask_about_check_answers_from_verdict_context(monkeypatch):
+    check = {
+        "verdict": "stop",
+        "headline": "Fake bank call",
+        "reasons": ["Asked for your OTP"],
+        "nextSteps": ["Hang up"],
+        "kind": "call",
+        "scamType": "bank",
+        "sayThis": "I don't do this over the phone.",
+    }
+    captured = {}
+
+    class FakeMessages:
+        def create(self, **kwargs):
+            captured.update(kwargs)
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text="  You're safe to hang up. ")])
+
+    monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
+    answer = ai.ask_about_check(check, [{"role": "user", "content": "earlier question"}, {"role": "assistant", "content": "earlier answer"}], "should I block the number?")
+
+    assert answer == "You're safe to hang up."
+    assert "Fake bank call" in captured["system"]
+    assert captured["messages"][-1] == {"role": "user", "content": "should I block the number?"}
+
+
+def test_ask_about_check_no_text_raises(monkeypatch):
+    class FakeMessages:
+        def create(self, **kwargs):
+            return SimpleNamespace(content=[])
+
+    monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
+    with pytest.raises(ai.CheckFailed):
+        ai.ask_about_check({"verdict": "safe", "headline": "h", "reasons": ["r"], "nextSteps": ["n"], "kind": "message", "scamType": None}, [], "huh?")
+
+
 def test_safe_verdict_never_gets_say_this(monkeypatch):
     verdict = ai.ScamVerdict(
         verdict="safe",

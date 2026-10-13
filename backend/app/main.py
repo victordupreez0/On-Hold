@@ -157,6 +157,27 @@ def alert_guardians(check_id: str, user: User):
     return [link["guardian_name"] for link in links]
 
 
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=500)
+
+
+class AskInput(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=20)
+
+
+@app.post("/checks/{check_id}/messages")
+def ask_about_check(check_id: str, body: AskInput, user: User):
+    check = one(f"select {_CHECK_FIELDS} from checks where id = %(id)s and user_id = %(uid)s", {"id": check_id, "uid": user.id})
+    check = _found(check, "We couldn’t find that check.")
+    try:
+        answer = ai.ask_about_check(check, [t.model_dump() for t in body.history], body.question)
+    except ai.CheckFailed:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Couldn’t answer that right now.")
+    return {"answer": answer}
+
+
 class TranscribeInput(BaseModel):
     audioUri: str
 

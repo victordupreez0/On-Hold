@@ -131,6 +131,59 @@ def run_check(kind: Literal["message", "call"], text: str | None, image: dict | 
     }
 
 
+CHAT_SYSTEM_PROMPT = """You're continuing a conversation with someone who just got a scam check from you. \
+You already gave them a verdict -- don't re-decide it or contradict it, just help them understand it and \
+know what to do, the way a calm, switched-on friend would, not a form letter or a warning label.
+
+Write like you're talking to them, not at them: warm, plain, a little human. Short answers -- 2-4 sentences \
+unless they clearly want more detail. No headers, no bullet lists, no jargon. It's fine to be reassuring \
+when the verdict is safe, and it's fine to be direct and a bit firm when it's stop -- their safety matters \
+more than being gentle about it.
+
+The check you already gave them:
+{context}
+
+Stay grounded in that. If they ask something this check can't answer, say so plainly rather than guessing."""
+
+
+def _check_context(check: dict) -> str:
+    lines = [
+        f"Verdict: {check['verdict']}",
+        f"Headline: {check['headline']}",
+        f"Reasons: {'; '.join(check['reasons'])}",
+        f"Next steps: {'; '.join(check['nextSteps'])}",
+        f"Kind: {check['kind']}",
+        f"Scam type: {check['scamType'] or 'none'}",
+    ]
+    if check.get("sayThis"):
+        lines.append(f"What we told them to say if the caller comes back: {check['sayThis']}")
+    return "\n".join(lines)
+
+
+def ask_about_check(check: dict, history: list[dict], question: str) -> str:
+    """A free-form follow-up chat grounded in an existing verdict. Nothing here
+    is persisted -- the conversation lives only as long as the client holds it
+    in memory, same as the raw check input itself never is.
+    """
+    messages = [{"role": t["role"], "content": t["content"][:500]} for t in history[-20:]]
+    messages.append({"role": "user", "content": question[:500]})
+
+    try:
+        response = _client().messages.create(
+            model=get_settings().anthropic_model,
+            max_tokens=400,
+            system=CHAT_SYSTEM_PROMPT.format(context=_check_context(check)),
+            messages=messages,
+        )
+    except anthropic.APIError as e:
+        raise CheckFailed(f"Claude API error: {e}") from e
+
+    text = next((b.text for b in response.content if b.type == "text"), None)
+    if not text:
+        raise CheckFailed("Claude returned no usable output.")
+    return text.strip()
+
+
 def transcribe(_audio_uri: str) -> str:
     # ponytail: canned transcript until a speech-to-text provider is wired up.
     return (
