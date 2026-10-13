@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as api from '@/api';
 import { Logo } from '@/components/Logo';
 import { Feather, ListGroup, ListRow, Screen, Section, T, timeAgo } from '@/components/ui';
-import { EXPLAINERS, SCAM_LABELS } from '@/fixtures';
+import { SCAM_LABELS } from '@/fixtures';
 import { useUser } from '@/session';
 import { colors, minTouch, radius, space, verdictStyle } from '@/theme';
 import type { User } from '@/types';
@@ -77,10 +77,11 @@ function FullHome({ user }: { user: User }) {
   const family = useLoad(api.getFamily);
   const circulating = useLoad(api.listCirculating);
   const pending = useLoad(() => (user.role === 'admin' ? api.listPendingReports() : Promise.resolve([])), user.role);
+  const explainers = useLoad(api.listExplainers);
 
   const last = checks.data?.[0];
   const near = circulating.data?.[0];
-  const nearGuide = near && EXPLAINERS.find((e) => e.scamType === near.scamType);
+  const nearGuide = near && explainers.data?.find((e) => e.scamType === near.scamType);
 
   return (
     <Screen edges={[]} style={{ paddingTop: 0 }}>
