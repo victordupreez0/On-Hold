@@ -1,8 +1,15 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 import * as api from './api';
+import { ApiError } from './api';
 import { supabase } from './supabase';
 import type { User } from './types';
+
+// Only these events mean the profile might actually be different; a token
+// refresh (hourly) or a tab regaining focus shouldn't re-fetch or, on a
+// transient network/server hiccup, sign someone out of a session that's
+// still perfectly valid.
+const PROFILE_EVENTS = new Set(['SIGNED_IN', 'INITIAL_SESSION', 'USER_UPDATED']);
 
 type Session = {
   user: User | null;
@@ -27,10 +34,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         return;
       }
+      if (!PROFILE_EVENTS.has(event)) return; // e.g. TOKEN_REFRESHED -- session is still good, nothing to refetch
       try {
         setUser(await api.getMe());
-      } catch {
-        setUser(null);
+      } catch (e) {
+        // Only a real "that token is no good" clears the session. A network
+        // blip or a cold-starting API shouldn't sign out someone who's
+        // still validly logged in.
+        if (e instanceof ApiError && e.status === 401) setUser(null);
       } finally {
         setLoading(false);
       }

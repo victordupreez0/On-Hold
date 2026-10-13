@@ -20,17 +20,40 @@ import type {
   User,
 } from './types';
 
+/** Thrown for any non-2xx API response. Callers that care which kind of
+ * failure this was (e.g. the session recovering from a stale login) check
+ * `.status` instead of pattern-matching the message. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
+
+const REQUEST_TIMEOUT_MS = 20_000;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const headers: Record<string, string> = { ...(init?.headers as Record<string, string>) };
   if (data.session) headers.Authorization = `Bearer ${data.session.access_token}`;
   if (init?.body) headers['Content-Type'] = 'application/json';
 
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, { ...init, headers, signal: controller.signal });
+  } catch {
+    throw new Error('Couldn’t reach the server. Check your connection and try again.');
+  } finally {
+    clearTimeout(timeout);
+  }
   if (res.status === 204) return undefined as T;
 
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(body?.detail ?? 'Something went wrong. Please try again.');
+  if (!res.ok) throw new ApiError(body?.detail ?? 'Something went wrong. Please try again.', res.status);
   return body as T;
 }
 
@@ -47,12 +70,15 @@ export async function getMe() {
 }
 
 export async function signUp(input: { name: string; email: string; password: string; role: Role }) {
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,
     options: { data: { name: input.name.trim(), role: input.role } },
   });
   if (error) throw new Error(error.message);
+  // If the project requires email confirmation, sign-up succeeds but there's no
+  // session yet -- say so plainly instead of a confusing "please sign in again".
+  if (!data.session) throw new Error('Check your email to confirm your account, then sign in.');
   return getMe();
 }
 

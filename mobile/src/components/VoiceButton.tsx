@@ -23,11 +23,15 @@ export function VoiceButton({ onTranscript, large = false, style }: Props) {
   const toast = useToast();
 
   const start = async () => {
-    const { granted } = await requestRecordingPermissionsAsync();
-    if (!granted) return toast('Allow the microphone in your phone’s settings to speak to On Hold.');
-    await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
+    try {
+      const { granted } = await requestRecordingPermissionsAsync();
+      if (!granted) return toast('Allow the microphone in your phone’s settings to speak to On Hold.');
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+    } catch {
+      toast('Couldn’t start recording. Try again, or type it instead.');
+    }
   };
 
   const stop = async () => {
@@ -35,6 +39,9 @@ export function VoiceButton({ onTranscript, large = false, style }: Props) {
     setBusy(true);
     try {
       onTranscript(await api.transcribe(recorder.uri ?? ''));
+      // ponytail: voice-to-text is a canned demo stand-in (see backend/app/ai.py:transcribe),
+      // not what was actually said — say so, since it lands in an editable field either way.
+      toast('Voice-to-text is a demo stand-in for now — read it over before you check it.');
     } catch {
       toast('We couldn’t hear that. Try again, or type it instead.');
     } finally {

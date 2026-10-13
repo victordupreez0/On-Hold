@@ -6,7 +6,10 @@ import { AppState } from 'react-native';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const key = process.env.EXPO_PUBLIC_SUPABASE_KEY;
-if (!url || !key) throw new Error('Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_KEY (see mobile/.env.example).');
+const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+if (!url || !key || !apiUrl) {
+  throw new Error('Set EXPO_PUBLIC_SUPABASE_URL, EXPO_PUBLIC_SUPABASE_KEY and EXPO_PUBLIC_API_URL (see mobile/.env.example).');
+}
 
 export const supabase = createClient(url, key, {
   auth: { storage: AsyncStorage, autoRefreshToken: true, persistSession: true, detectSessionInUrl: false },
@@ -19,4 +22,4 @@ AppState.addEventListener('change', (state) => {
   else supabase.auth.stopAutoRefresh();
 });
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
+export const API_URL = apiUrl;

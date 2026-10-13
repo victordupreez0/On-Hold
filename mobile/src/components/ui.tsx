@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   chip: {
-    minHeight: minTouch - 4,
+    minHeight: minTouch,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
