@@ -2,7 +2,6 @@
 // a mock (see git history) so screens never had to change between phases.
 import * as Linking from 'expo-linking';
 
-import { EXPLAINERS } from './fixtures';
 import { API_URL, supabase } from './supabase';
 import type {
   AlertItem,
@@ -12,11 +11,13 @@ import type {
   CheckInput,
   CheckResult,
   Circulating,
+  Explainer,
   GuardianLink,
   Report,
   ReportInput,
   Role,
   ScamType,
+  Suburb,
   User,
 } from './types';
 
@@ -158,17 +159,15 @@ export async function listCirculating(): Promise<Circulating[]> {
 }
 
 export async function listExplainers() {
-  return EXPLAINERS;
+  return get<Explainer[]>('/explainers');
 }
 
 export async function getExplainer(slug: string) {
-  const found = EXPLAINERS.find((e) => e.slug === slug);
-  if (!found) throw new Error('We couldn’t find that guide.');
-  return found;
+  return get<Explainer>(`/explainers/${slug}`);
 }
 
 export async function listSuburbs() {
-  return get<{ name: string; city: string; lat: number; lng: number }[]>('/suburbs');
+  return get<Suburb[]>('/suburbs');
 }
 
 // ---------- Family ----------
@@ -214,9 +213,109 @@ export async function alertGuardians(checkId: string) {
 // ---------- Admin ----------
 
 export async function listPendingReports() {
-  return get<Report[]>('/admin/reports/pending');
+  return listAllReports({ status: 'pending' });
 }
 
 export async function moderateReport(id: string, decision: 'approved' | 'rejected', reason?: string) {
   return post<Report>(`/admin/reports/${id}/moderate`, { decision, reason });
+}
+
+export type AdminReport = Report & { moderatedBy: string | null; moderatedAt: string | null };
+export type AdminDashboard = {
+  users: { total: number; byRole: Record<Role, number> };
+  checks: { total: number; byVerdict: Record<CheckResult['verdict'], number>; last7Days: number };
+  reports: { total: number; byStatus: Record<Report['status'], number> };
+  aiCallsLast24h: number;
+  trend: { date: string; count: number }[];
+  activity: { type: 'check' | 'report' | 'signup'; id: string; summary: string; createdAt: string }[];
+};
+
+export async function getAdminDashboard() {
+  return get<AdminDashboard>('/admin/dashboard');
+}
+
+export async function listAllReports(filter: { status?: Report['status']; scamType?: ScamType; search?: string; limit?: number; offset?: number } = {}) {
+  const params = new URLSearchParams();
+  if (filter.status) params.set('status', filter.status);
+  if (filter.scamType) params.set('scamType', filter.scamType);
+  if (filter.search) params.set('search', filter.search);
+  if (filter.limit) params.set('limit', String(filter.limit));
+  if (filter.offset) params.set('offset', String(filter.offset));
+  const qs = params.toString();
+  return get<AdminReport[]>(`/admin/reports${qs ? `?${qs}` : ''}`);
+}
+
+export async function getAdminReport(id: string) {
+  return get<AdminReport>(`/admin/reports/${id}`);
+}
+
+export async function adminUpdateReport(id: string, input: ReportInput) {
+  return put<AdminReport>(`/admin/reports/${id}`, input);
+}
+
+export async function adminDeleteReport(id: string) {
+  await del(`/admin/reports/${id}`);
+}
+
+export type AdminUser = User & { createdAt: string };
+
+export async function listUsers(filter: { search?: string; role?: Role; limit?: number; offset?: number } = {}) {
+  const params = new URLSearchParams();
+  if (filter.search) params.set('search', filter.search);
+  if (filter.role) params.set('role', filter.role);
+  if (filter.limit) params.set('limit', String(filter.limit));
+  if (filter.offset) params.set('offset', String(filter.offset));
+  const qs = params.toString();
+  return get<AdminUser[]>(`/admin/users${qs ? `?${qs}` : ''}`);
+}
+
+export async function getUser(id: string) {
+  return get<AdminUser>(`/admin/users/${id}`);
+}
+
+export async function updateUserRole(id: string, role: Role) {
+  return patch<AdminUser>(`/admin/users/${id}`, { role });
+}
+
+export async function deleteUser(id: string) {
+  await del(`/admin/users/${id}`);
+}
+
+export async function createExplainer(input: Omit<Explainer, 'id'>) {
+  return post<Explainer>('/admin/explainers', flattenExplainer(input));
+}
+
+export async function updateExplainer(id: string, input: Omit<Explainer, 'id'>) {
+  return put<Explainer>(`/admin/explainers/${id}`, flattenExplainer(input));
+}
+
+export async function deleteExplainer(id: string) {
+  await del(`/admin/explainers/${id}`);
+}
+
+function flattenExplainer(input: Omit<Explainer, 'id'>) {
+  return {
+    slug: input.slug,
+    scamType: input.scamType,
+    title: input.title,
+    summary: input.summary,
+    exampleChannel: input.example.channel,
+    exampleText: input.example.text,
+    signs: input.signs,
+    whatToDo: input.whatToDo,
+    sourceName: input.source.name,
+    sourceUrl: input.source.url,
+  };
+}
+
+export async function createSuburb(suburb: Suburb) {
+  return post<Suburb>('/admin/suburbs', suburb);
+}
+
+export async function updateSuburb(name: string, input: Omit<Suburb, 'name'>) {
+  return put<Suburb>(`/admin/suburbs/${name}`, input);
+}
+
+export async function deleteSuburb(name: string) {
+  await del(`/admin/suburbs/${name}`);
 }

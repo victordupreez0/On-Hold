@@ -113,3 +113,130 @@ def test_suburb_validation_rejects_unknown_suburb(monkeypatch):
     monkeypatch.setattr(main, "one", lambda *a, **k: None)  # "select 1 from suburbs where ..." finds nothing
     res = client.patch("/me", json={"suburb": "Not A Real Place"})
     assert res.status_code == 400
+
+
+# ---------- Admin panel ----------
+
+import uuid as _uuid  # noqa: E402
+
+ADMIN_ID = _uuid.UUID("22222222-2222-2222-2222-222222222222")
+
+
+def _admin(uid=ADMIN_ID):
+    # CurrentUser.id is a real uuid.UUID in production (psycopg auto-converts
+    # the uuid column) -- use one here too, or self/last-admin `==` checks
+    # would never match the way they do for real traffic.
+    return CurrentUser({"id": uid, "name": "Admin", "email": "a@t.test", "phone": None, "role": "admin", "simpleMode": False, "suburb": None})
+
+
+def test_admin_routes_require_admin_role():
+    app.dependency_overrides[current_user] = lambda: _user(role="guardian")
+    assert client.get("/admin/dashboard").status_code == 403
+    assert client.get("/admin/users").status_code == 403
+    assert client.get("/admin/reports").status_code == 403
+
+
+def test_cant_change_own_role(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _admin()
+    res = client.patch(f"/admin/users/{ADMIN_ID}", json={"role": "guardian"})
+    assert res.status_code == 400
+
+
+def test_cant_demote_the_last_admin(monkeypatch):
+    other_admin = _uuid.uuid4()
+    app.dependency_overrides[current_user] = lambda: _admin()
+    monkeypatch.setattr(main, "one", lambda sql, params=None: {"role": "admin"} if "select role" in sql else {"n": 0})
+    res = client.patch(f"/admin/users/{other_admin}", json={"role": "guardian"})
+    assert res.status_code == 400
+
+
+def test_can_demote_an_admin_when_another_remains(monkeypatch):
+    other_admin = _uuid.uuid4()
+    app.dependency_overrides[current_user] = lambda: _admin()
+
+    def fake_one(sql, params=None):
+        if "select role" in sql:
+            return {"role": "admin"}
+        if "count(*)" in sql:
+            return {"n": 1}  # one other admin remains
+        return {**_USER_ROW, "role": "guardian"}
+
+    monkeypatch.setattr(main, "one", fake_one)
+    res = client.patch(f"/admin/users/{other_admin}", json={"role": "guardian"})
+    assert res.status_code == 200
+
+
+_USER_ROW = {"id": "x", "name": "N", "email": "e@t.test", "phone": None, "role": "guardian", "simpleMode": False, "suburb": None}
+
+
+def test_cant_delete_own_account():
+    app.dependency_overrides[current_user] = lambda: _admin()
+    res = client.delete(f"/admin/users/{ADMIN_ID}")
+    assert res.status_code == 400
+
+
+def test_cant_delete_the_last_admin(monkeypatch):
+    other_admin = _uuid.uuid4()
+    app.dependency_overrides[current_user] = lambda: _admin()
+
+    def fake_one(sql, params=None):
+        if "select role" in sql:
+            return {"role": "admin"}
+        if "count(*)" in sql:
+            return {"n": 0}
+        return {"id": other_admin}
+
+    monkeypatch.setattr(main, "one", fake_one)
+    res = client.delete(f"/admin/users/{other_admin}")
+    assert res.status_code == 400
+
+
+def test_explainer_duplicate_slug_is_a_clean_400(monkeypatch):
+    from psycopg.errors import UniqueViolation
+
+    app.dependency_overrides[current_user] = lambda: _admin()
+
+    def raise_unique(*a, **k):
+        raise UniqueViolation("duplicate key")
+
+    monkeypatch.setattr(main, "one", raise_unique)
+    res = client.post(
+        "/admin/explainers",
+        json={
+            "slug": "bank-fraud-call",
+            "scamType": "bank",
+            "title": "t",
+            "summary": "s",
+            "exampleChannel": "call",
+            "exampleText": "e",
+            "signs": ["a"],
+            "whatToDo": ["b"],
+            "sourceName": "SABRIC",
+            "sourceUrl": "https://example.com",
+        },
+    )
+    assert res.status_code == 400
+
+
+def test_delete_suburb_still_in_use_is_a_clean_400(monkeypatch):
+    from psycopg.errors import ForeignKeyViolation
+
+    app.dependency_overrides[current_user] = lambda: _admin()
+
+    def raise_fk(*a, **k):
+        raise ForeignKeyViolation("still referenced")
+
+    monkeypatch.setattr(main, "one", raise_fk)
+    res = client.delete("/admin/suburbs/Bellville")
+    assert res.status_code == 400
+
+
+def test_admin_dashboard_shape(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _admin()
+    monkeypatch.setattr(main, "query", lambda *a, **k: [])
+    monkeypatch.setattr(main, "one", lambda *a, **k: {"n": 0})
+    res = client.get("/admin/dashboard")
+    assert res.status_code == 200
+    body = res.json()
+    assert set(body.keys()) == {"users", "checks", "reports", "aiCallsLast24h", "trend", "activity"}
+    assert body["users"]["byRole"] == {"protected": 0, "guardian": 0, "admin": 0}

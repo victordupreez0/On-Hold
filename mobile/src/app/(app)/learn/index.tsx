@@ -2,21 +2,22 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
-import { Feather, ListGroup, ListRow, PageTitle, Screen, Section, T } from '@/components/ui';
-import { CHANNEL_ICONS, EXPLAINERS, SCAM_LABELS } from '@/fixtures';
+import { Feather, ListGroup, ListRow, Loading, PageTitle, Screen, Section, T } from '@/components/ui';
+import { CHANNEL_ICONS, SCAM_LABELS } from '@/fixtures';
 import { colors, radius, space } from '@/theme';
-import type { ScamType } from '@/types';
+import type { Explainer, ScamType } from '@/types';
 import { useLoad } from '@/useLoad';
-
-const guideFor = (t: ScamType) => EXPLAINERS.find((e) => e.scamType === t);
-const openGuide = (t: ScamType) => {
-  const g = guideFor(t);
-  if (g) router.push(`/learn/${g.slug}`);
-};
 
 export default function Learn() {
   const circulating = useLoad(api.listCirculating);
+  const explainers = useLoad(api.listExplainers);
   const [top, ...rest] = circulating.data ?? [];
+
+  const guideFor = (t: ScamType) => explainers.data?.find((e) => e.scamType === t);
+  const openGuide = (t: ScamType) => {
+    const g = guideFor(t);
+    if (g) router.push(`/learn/${g.slug}`);
+  };
 
   return (
     <Screen>
@@ -61,11 +62,15 @@ export default function Learn() {
       )}
 
       <Section title="Common scams in South Africa">
-        <ListGroup>
-          {EXPLAINERS.map((e) => (
-            <ListRow key={e.slug} icon={CHANNEL_ICONS[e.example.channel]} title={e.title} subtitle={e.summary} onPress={() => router.push(`/learn/${e.slug}`)} />
-          ))}
-        </ListGroup>
+        {!explainers.data ? (
+          <Loading />
+        ) : (
+          <ListGroup>
+            {explainers.data.map((e: Explainer) => (
+              <ListRow key={e.slug} icon={CHANNEL_ICONS[e.example.channel]} title={e.title} subtitle={e.summary} onPress={() => router.push(`/learn/${e.slug}`)} />
+            ))}
+          </ListGroup>
+        )}
       </Section>
     </Screen>
   );

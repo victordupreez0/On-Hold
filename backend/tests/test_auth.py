@@ -11,7 +11,7 @@ def test_me_requires_auth():
 
 
 def test_admin_route_requires_auth():
-    res = client.get("/admin/reports/pending")
+    res = client.get("/admin/dashboard")
     assert res.status_code == 401
 
 

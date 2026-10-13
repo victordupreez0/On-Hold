@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { SUBURBS } from '@/fixtures';
+import * as api from '@/api';
 import { colors, space } from '@/theme';
+import { useLoad } from '@/useLoad';
 import { Chip, Feather, T, TextField } from './ui';
 
 /** Search-and-pick suburb field, shared by the report form and the profile.
@@ -10,6 +11,8 @@ import { Chip, Feather, T, TextField } from './ui';
 export function SuburbPicker({ value, onChange, error }: { value: string | null; onChange: (suburb: string) => void; error?: string }) {
   const [search, setSearch] = useState('');
   const [picking, setPicking] = useState(!value);
+  // Loaded unconditionally -- hooks can't follow the early return below.
+  const all = useLoad(api.listSuburbs);
 
   if (value && !picking) {
     return (
@@ -34,7 +37,7 @@ export function SuburbPicker({ value, onChange, error }: { value: string | null;
   }
 
   const q = search.trim().toLowerCase();
-  const suburbs = SUBURBS.filter((s) => !q || `${s.name} ${s.city}`.toLowerCase().includes(q));
+  const suburbs = (all.data ?? []).filter((s) => !q || `${s.name} ${s.city}`.toLowerCase().includes(q));
 
   return (
     <View style={{ gap: space.sm }}>
@@ -44,7 +47,7 @@ export function SuburbPicker({ value, onChange, error }: { value: string | null;
         value={search}
         onChangeText={setSearch}
         placeholder="Search suburbs"
-        error={error}
+        error={error ?? all.error}
       />
       <View style={styles.wrap} role="radiogroup">
         {suburbs.slice(0, q ? 12 : 6).map((s) => (
@@ -61,7 +64,7 @@ export function SuburbPicker({ value, onChange, error }: { value: string | null;
         ))}
         {!suburbs.length && (
           <T v="small" color={colors.inkSoft}>
-            No suburb matches “{search}”.
+            {!all.data ? 'Loading suburbs…' : `No suburb matches “${search}”.`}
           </T>
         )}
       </View>
