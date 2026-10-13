@@ -108,6 +108,7 @@ function FullHome({ user }: { user: User }) {
             />
           )}
           {family.data && <FamilyRow user={user} family={family.data} />}
+          {!!checks.data?.length && <ListRow icon="clock" title="History" subtitle="Everything you’ve checked" onPress={() => router.push('/history')} />}
           {near && (
             <ListRow
               icon="trending-up"

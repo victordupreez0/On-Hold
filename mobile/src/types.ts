@@ -25,7 +25,11 @@ export type User = {
   suburb: string | null;
 };
 
-export type CheckInput = { kind: 'message' | 'call'; text?: string; imageUri?: string };
+export type CheckInput = {
+  kind: 'message' | 'call';
+  text?: string;
+  image?: { base64: string; mediaType: string };
+};
 
 export type CheckResult = {
   id: string;
@@ -40,6 +44,8 @@ export type CheckResult = {
   sayThis?: string;
   createdAt: string;
 };
+
+export type ChatTurn = { role: 'user' | 'assistant'; content: string };
 
 export type ReportStatus = 'pending' | 'approved' | 'rejected';
 
