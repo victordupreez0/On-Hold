@@ -99,6 +99,7 @@ export type AlertItem = {
 };
 
 export type Explainer = {
+  id: string;
   slug: string;
   scamType: ScamType;
   title: string;
