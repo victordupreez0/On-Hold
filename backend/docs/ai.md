@@ -80,6 +80,20 @@ Every failure reaches the app as a plain `503`/`429` with a message; the UI's
 existing Wait-fallback screen (built for the mock's `test-error` hook) covers
 all of them unchanged.
 
+## Follow-up chat
+
+`POST /checks/{id}/messages` (`app/ai.py:ask_about_check()`) lets someone keep
+talking after a verdict -- "what if he calls again?", "should I block this
+number?" -- in Claude's own voice instead of a static card. It's free-form
+text, not structured output: the system prompt grounds every reply in the
+verdict already stored for that check (headline, reasons, next steps, say
+this) and is told not to re-decide or contradict it.
+
+Nothing about the conversation is persisted. The client holds the running
+history in memory and resends it each turn; closing the screen ends it. That
+keeps the same guarantee as the check itself -- no raw scam text or chat
+content ever reaches the database, only the verdict does.
+
 ## What isn't validated here
 
 The raw check input (message text, screenshot) is **not persisted** --

@@ -45,6 +45,8 @@ export type CheckResult = {
   createdAt: string;
 };
 
+export type ChatTurn = { role: 'user' | 'assistant'; content: string };
+
 export type ReportStatus = 'pending' | 'approved' | 'rejected';
 
 export type Report = {

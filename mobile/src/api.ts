@@ -8,6 +8,7 @@ import type {
   AlertItem,
   AreaStat,
   Channel,
+  ChatTurn,
   CheckInput,
   CheckResult,
   Circulating,
@@ -86,6 +87,12 @@ export async function getCheck(id: string) {
 
 export async function listMyChecks() {
   return get<CheckResult[]>('/checks');
+}
+
+/** A free-form follow-up question about an existing check, grounded in its verdict. Nothing here is saved. */
+export async function askAboutCheck(checkId: string, question: string, history: ChatTurn[]) {
+  const { answer } = await post<{ answer: string }>(`/checks/${checkId}/messages`, { question, history });
+  return answer;
 }
 
 // ---------- Reports ----------
