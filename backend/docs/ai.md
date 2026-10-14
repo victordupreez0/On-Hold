@@ -89,10 +89,13 @@ text, not structured output: the system prompt grounds every reply in the
 verdict already stored for that check (headline, reasons, next steps, say
 this) and is told not to re-decide or contradict it.
 
-Nothing about the conversation is persisted. The client holds the running
-history in memory and resends it each turn; closing the screen ends it. That
-keeps the same guarantee as the check itself -- no raw scam text or chat
-content ever reaches the database, only the verdict does.
+The conversation is saved (`check_messages`: the person's question and the
+reply, one row each) so History can show it again later -- the server loads
+the last 20 turns itself rather than trusting a client-sent history.
+`GET /checks/{id}/messages` returns the thread. This is a deliberate change
+from the first version, where chats lived only in memory: people asked to
+see their past questions. The original message or screenshot being checked
+is still never stored (below).
 
 ## What isn't validated here
 

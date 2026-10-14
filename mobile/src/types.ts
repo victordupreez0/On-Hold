@@ -43,9 +43,11 @@ export type CheckResult = {
   nextSteps: string[];
   sayThis?: string;
   createdAt: string;
+  /** Only on the list endpoint: how many follow-up chat messages this check has. */
+  messageCount?: number;
 };
 
-export type ChatTurn = { role: 'user' | 'assistant'; content: string };
+export type ChatMessage = { role: 'user' | 'assistant'; content: string; createdAt: string };
 
 export type ReportStatus = 'pending' | 'approved' | 'rejected';
 

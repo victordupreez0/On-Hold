@@ -42,7 +42,10 @@ function TabBar({ state, navigation, insets }: BottomTabBarProps) {
           // Emitting tabPress lets a focused tab's stack pop back to its root, like native tab bars.
           const onPress = () => {
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-            if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+            if (focused || event.defaultPrevented) return;
+            navigation.navigate(route.name, route.params);
+            // The centre button always means "check something new", never "back to that old verdict".
+            if (isCheck && route.state?.key && route.state.index) navigation.dispatch({ type: 'POP_TO_TOP', target: route.state.key });
           };
           return (
             <Pressable

@@ -1,15 +1,16 @@
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as api from '@/api';
 import { Logo } from '@/components/Logo';
-import { Feather, ListGroup, ListRow, Screen, Section, T, timeAgo } from '@/components/ui';
+import { ErrorState, Feather, ListGroup, ListRow, Loading, Screen, Section, T, TextLink, timeAgo } from '@/components/ui';
 import { SCAM_LABELS } from '@/fixtures';
 import { useUser } from '@/session';
 import { colors, minTouch, radius, space, verdictStyle } from '@/theme';
-import type { User } from '@/types';
+import type { CheckResult, Explainer, User } from '@/types';
 import { useLoad } from '@/useLoad';
 
 const openCheck = (mode?: 'call') => router.navigate(mode ? { pathname: '/check', params: { mode } } : '/check');
@@ -72,55 +73,170 @@ function Hero({ user }: { user: User }) {
   );
 }
 
+type Tab = 'today' | 'history';
+
 function FullHome({ user }: { user: User }) {
+  const [tab, setTab] = useState<Tab>('today');
   const checks = useLoad(api.listMyChecks);
+
+  return (
+    <Screen edges={[]} style={{ paddingTop: 0 }}>
+      <Hero user={user} />
+      <Segments value={tab} onChange={setTab} />
+      {tab === 'today' ? <Today user={user} checks={checks.data} onSeeAll={() => setTab('history')} /> : <History checks={checks} />}
+    </Screen>
+  );
+}
+
+function Segments({ value, onChange }: { value: Tab; onChange: (t: Tab) => void }) {
+  return (
+    <View style={styles.segments} role="tablist">
+      {(['today', 'history'] as const).map((t) => (
+        <Pressable
+          key={t}
+          onPress={() => onChange(t)}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: value === t }}
+          style={[styles.segment, value === t && styles.segmentOn]}>
+          <T v="label" color={value === t ? colors.ink : colors.inkSoft}>
+            {t === 'today' ? 'Today' : 'History'}
+          </T>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function CheckRow({ check }: { check: CheckResult }) {
+  const v = verdictStyle[check.verdict];
+  const asked = (check.messageCount ?? 0) / 2; // each question is saved with its answer
+  const chat = asked ? ` · ${asked === 1 ? '1 question' : `${asked} questions`}` : '';
+  return (
+    <ListRow
+      icon={v.icon}
+      iconBg={v.bg}
+      iconColor={v.fg}
+      title={check.headline}
+      subtitle={`${v.word} · ${check.kind === 'call' ? 'Call' : 'Message'} · ${timeAgo(check.createdAt)}${chat}`}
+      onPress={() => router.push({ pathname: '/history/[id]', params: { id: check.id } })}
+    />
+  );
+}
+
+/** What matters right now: your latest checks, one tip, and what's going around. */
+function Today({ user, checks, onSeeAll }: { user: User; checks?: CheckResult[]; onSeeAll: () => void }) {
   const family = useLoad(api.getFamily);
   const circulating = useLoad(api.listCirculating);
   const pending = useLoad(() => (user.role === 'admin' ? api.listPendingReports() : Promise.resolve([])), user.role);
   const explainers = useLoad(api.listExplainers);
 
-  const last = checks.data?.[0];
   const near = circulating.data?.[0];
   const nearGuide = near && explainers.data?.find((e) => e.scamType === near.scamType);
+  const recent = checks?.slice(0, 3);
 
   return (
-    <Screen edges={[]} style={{ paddingTop: 0 }}>
-      <Hero user={user} />
-
-      <Section title="Today">
+    <>
+      {!!pending.data?.length && (
         <ListGroup>
-          {!!pending.data?.length && (
-            <ListRow
-              icon="shield"
-              iconBg={colors.highlighter}
-              title={`${pending.data.length} ${pending.data.length === 1 ? 'report' : 'reports'} to review`}
-              subtitle="Approve real scams so they warn people nearby"
-              onPress={() => router.push('/admin')}
-            />
-          )}
-          {last && (
-            <ListRow
-              icon={verdictStyle[last.verdict].icon}
-              iconBg={verdictStyle[last.verdict].bg}
-              iconColor={verdictStyle[last.verdict].fg}
-              title={last.headline}
-              subtitle={`Your last check · ${verdictStyle[last.verdict].word} · ${timeAgo(last.createdAt)}`}
-              onPress={() => router.navigate(`/check/${last.id}`)}
-            />
-          )}
-          {family.data && <FamilyRow user={user} family={family.data} />}
-          {!!checks.data?.length && <ListRow icon="clock" title="History" subtitle="Everything you’ve checked" onPress={() => router.push('/history')} />}
-          {near && (
-            <ListRow
-              icon="trending-up"
-              title={`Going around: ${SCAM_LABELS[near.scamType]}`}
-              subtitle={near.nearYou ? `${near.nearYou} reports near you this fortnight` : `${near.count} reports this fortnight`}
-              onPress={() => (nearGuide ? router.navigate(`/learn/${nearGuide.slug}`) : router.navigate('/learn'))}
-            />
-          )}
+          <ListRow
+            icon="shield"
+            iconBg={colors.highlighter}
+            title={`${pending.data.length} ${pending.data.length === 1 ? 'report' : 'reports'} to review`}
+            subtitle="Approve real scams so they warn people nearby"
+            onPress={() => router.push('/admin')}
+          />
         </ListGroup>
+      )}
+
+      <Section title="Recent" action={!!checks && checks.length > 3 && <TextLink label="See all" onPress={onSeeAll} />}>
+        {!recent ? (
+          <Loading />
+        ) : recent.length ? (
+          <ListGroup>
+            {recent.map((c) => (
+              <CheckRow key={c.id} check={c} />
+            ))}
+          </ListGroup>
+        ) : (
+          <View style={styles.emptyRecent}>
+            <Feather name="inbox" size={22} color={colors.inkSoft} />
+            <T color={colors.inkSoft} style={{ flex: 1 }}>
+              Nothing checked yet. When something feels off, check it here first.
+            </T>
+          </View>
+        )}
       </Section>
-    </Screen>
+
+      {!!explainers.data?.length && <TipOfTheDay guides={explainers.data} />}
+
+      {(near || family.data) && (
+        <Section title="Around you">
+          <ListGroup>
+            {near && (
+              <ListRow
+                icon="trending-up"
+                title={`Going around: ${SCAM_LABELS[near.scamType]}`}
+                subtitle={near.nearYou ? `${near.nearYou} reports near you this fortnight` : `${near.count} reports this fortnight`}
+                onPress={() => (nearGuide ? router.navigate(`/learn/${nearGuide.slug}`) : router.navigate('/learn'))}
+              />
+            )}
+            {family.data && <FamilyRow user={user} family={family.data} />}
+          </ListGroup>
+        </Section>
+      )}
+    </>
+  );
+}
+
+/** One habit a day, taken from the Learn guides so admins edit it in one place. */
+function TipOfTheDay({ guides }: { guides: Explainer[] }) {
+  const [day] = useState(() => Math.floor(Date.now() / 86_400_000));
+  const guide = guides[day % guides.length];
+  const tip = guide.whatToDo[day % guide.whatToDo.length];
+  return (
+    <Section title="Tip for today">
+      <Pressable
+        onPress={() => router.navigate(`/learn/${guide.slug}`)}
+        accessibilityRole="button"
+        accessibilityLabel={`Tip for today: ${tip}. Read more about ${guide.title}`}
+        style={({ pressed }) => [styles.tip, pressed && { transform: [{ scale: 0.98 }] }]}>
+        <View style={styles.tipIcon}>
+          <Feather name="sun" size={20} color={colors.ink} />
+        </View>
+        <View style={{ flex: 1, gap: space.xs }}>
+          <T v="label" style={{ fontSize: 18, lineHeight: 24 }}>
+            {tip}
+          </T>
+          <T v="small" color={colors.inkSoft}>
+            From the guide: {guide.title}
+          </T>
+        </View>
+      </Pressable>
+    </Section>
+  );
+}
+
+/** Every check you've made, newest first, with how much you asked about each. */
+function History({ checks }: { checks: { data?: CheckResult[]; error?: string; reload: () => void } }) {
+  if (checks.error) return <ErrorState message={checks.error} onRetry={checks.reload} />;
+  if (!checks.data) return <Loading />;
+  if (!checks.data.length) {
+    return (
+      <View style={{ alignItems: 'center', gap: space.sm, paddingVertical: space.xl }}>
+        <Feather name="search" size={36} color={colors.inkSoft} />
+        <T v="heading">Nothing checked yet</T>
+        <T color={colors.inkSoft} style={{ textAlign: 'center' }}>
+          Every message, screenshot or call you check, and every question you ask about it, will be here.
+        </T>
+      </View>
+    );
+  }
+  return (
+    <ListGroup>
+      {checks.data.map((c) => (
+        <CheckRow key={c.id} check={c} />
+      ))}
+    </ListGroup>
   );
 }
 
@@ -235,6 +351,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pauseBar: { width: 5, height: 16, borderRadius: 3, backgroundColor: colors.ink },
+  segments: { flexDirection: 'row', backgroundColor: colors.grey, borderRadius: radius.pill, padding: 4, marginBottom: -space.sm },
+  segment: { flex: 1, minHeight: minTouch - 4, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  segmentOn: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
+  emptyRecent: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.hairline },
+  tip: { flexDirection: 'row', gap: space.md, padding: space.md + 2, borderRadius: radius.lg, backgroundColor: colors.waitTint },
+  tipIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.highlighter, alignItems: 'center', justifyContent: 'center' },
   callLink: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: minTouch, alignSelf: 'flex-start', marginTop: -space.sm },
   simpleTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   settingsButton: {

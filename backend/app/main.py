@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from . import ai, auth
 from .auth import CurrentUser, current_user, require_admin
 from .config import get_settings
-from .db import cursor, execute, get_pool, one, query
+from .db import execute, get_pool, one, query, transaction
 
 
 @asynccontextmanager
@@ -68,7 +68,7 @@ def _check_rate_limit(user_id: str):
     Only logs a timestamp -- never call content -- same privacy guarantee
     as checks themselves.
     """
-    with cursor() as cur:
+    with transaction() as cur:
         cur.execute("select pg_advisory_xact_lock(hashtext(%(id)s::text))", {"id": user_id})
         cur.execute(
             "select count(*) as n from ai_calls where user_id = %(id)s and created_at > now() - interval '1 hour'",
@@ -125,7 +125,7 @@ _CHECK_FIELDS = """id, user_id as "userId", kind, verdict, confidence, scam_type
 
 class ImageInput(BaseModel):
     base64: str
-    mediaType: str
+    mediaType: str | None = None  # ignored: the real type is read from the bytes (see ai._image_block)
 
 
 class CheckInput(BaseModel):
@@ -140,6 +140,8 @@ def create_check(body: CheckInput, user: User):
 
     try:
         result = ai.run_check(body.kind, body.text, body.image.model_dump() if body.image else None)
+    except ai.BadImage as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     except ai.CheckFailed:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "The checker is unavailable right now.")
 
@@ -167,7 +169,12 @@ def create_check(body: CheckInput, user: User):
 
 @app.get("/checks")
 def list_my_checks(user: User):
-    return query(f"select {_CHECK_FIELDS} from checks where user_id = %(id)s order by created_at desc", {"id": user.id})
+    return query(
+        f"""select {_CHECK_FIELDS},
+                   (select count(*) from check_messages m where m.check_id = checks.id) as "messageCount"
+            from checks where user_id = %(id)s order by created_at desc""",
+        {"id": user.id},
+    )
 
 
 @app.get("/checks/{check_id}")
@@ -194,14 +201,21 @@ def alert_guardians(check_id: uuid.UUID, user: User):
     return [link["guardian_name"] for link in links]
 
 
-class ChatTurn(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=500)
-
-
 class AskInput(BaseModel):
     question: str = Field(min_length=1, max_length=500)
-    history: list[ChatTurn] = Field(default_factory=list, max_length=20)
+
+
+_MESSAGE_FIELDS = """m.role, m.content, m.created_at as "createdAt" """
+
+
+@app.get("/checks/{check_id}/messages")
+def list_check_messages(check_id: uuid.UUID, user: User):
+    """The follow-up chat on one check, oldest first. Owner-scoped through the join."""
+    return query(
+        f"""select {_MESSAGE_FIELDS} from check_messages m join checks c on c.id = m.check_id
+            where m.check_id = %(id)s and c.user_id = %(uid)s order by m.created_at""",
+        {"id": check_id, "uid": user.id},
+    )
 
 
 @app.post("/checks/{check_id}/messages")
@@ -209,10 +223,20 @@ def ask_about_check(check_id: uuid.UUID, body: AskInput, user: User):
     check = one(f"select {_CHECK_FIELDS} from checks where id = %(id)s and user_id = %(uid)s", {"id": check_id, "uid": user.id})
     check = _found(check, "We couldn’t find that check.")
     _check_rate_limit(user.id)
+    history = query(
+        "select role, content from check_messages where check_id = %(id)s order by created_at desc limit 20",
+        {"id": check_id},
+    )[::-1]
     try:
-        answer = ai.ask_about_check(check, [t.model_dump() for t in body.history], body.question)
+        answer = ai.ask_about_check(check, history, body.question)
     except ai.CheckFailed:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Couldn’t answer that right now.")
+    # One statement, so a question is never saved without its answer.
+    execute(
+        """insert into check_messages (check_id, role, content, created_at)
+           values (%(id)s, 'user', %(q)s, now()), (%(id)s, 'assistant', %(a)s, now() + interval '1 millisecond')""",
+        {"id": check_id, "q": body.question, "a": answer},
+    )
     return {"answer": answer}
 
 
