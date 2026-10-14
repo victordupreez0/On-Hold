@@ -4,28 +4,16 @@ import { StyleSheet, View } from 'react-native';
 import { CHANNEL_LABELS, SCAM_LABELS } from '@/fixtures';
 import { colors, space } from '@/theme';
 import type { Channel, ReportInput, ScamType } from '@/types';
+import { validateReport, type ReportDraft } from '@/validateReport';
 import { SuburbPicker } from './SuburbPicker';
 import { Button, Chip, Feather, T, TextField } from './ui';
+
+export type { ReportDraft } from '@/validateReport';
 
 const CHANNELS = Object.keys(CHANNEL_LABELS) as Channel[];
 const TYPES = Object.keys(SCAM_LABELS) as ScamType[];
 
-export type ReportDraft = { channel: Channel | null; scamType: ScamType | null; description: string; sender: string; suburb: string | null };
-
 type Errors = Partial<Record<keyof ReportDraft, string>>;
-
-/** Field rules for a scam report. Returns no keys when the draft is valid. */
-export function validateReport(d: ReportDraft): Errors {
-  const e: Errors = {};
-  if (!d.channel) e.channel = 'How did it reach you?';
-  if (!d.scamType) e.scamType = 'Pick the closest type, or “Something else”.';
-  const len = d.description.trim().length;
-  if (len < 10) e.description = 'Tell us a little more (at least 10 characters).';
-  else if (len > 1000) e.description = 'Please keep it under 1000 characters.';
-  if (d.sender.trim().length > 100) e.sender = 'That’s too long for a number or link.';
-  if (!d.suburb) e.suburb = 'Choose the area you’re in, so others nearby are warned.';
-  return e;
-}
 
 type Props = {
   initial: ReportDraft;
