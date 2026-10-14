@@ -372,6 +372,7 @@ def list_circulating(user: User):
 
 _LINK_FIELDS = """l.id, l.guardian_id as "guardianId", gp.name as "guardianName", gp.phone as "guardianPhone",
     l.protected_id as "protectedId", l.protected_name as "protectedName", l.invited_phone as "invitedPhone",
+    coalesce((select pp.phone from profiles pp where pp.id = l.protected_id), l.invited_phone) as "protectedPhone",
     l.code, l.status, l.share_calls as "shareCalls", l.share_verdicts as "shareVerdicts" """
 _LINK_JOIN = "from guardian_links l join profiles gp on gp.id = l.guardian_id"
 # UPDATE ... SET ... FROM can't re-mention the target table, so updates join
