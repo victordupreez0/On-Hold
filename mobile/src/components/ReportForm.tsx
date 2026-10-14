@@ -21,7 +21,7 @@ export function validateReport(d: ReportDraft): Errors {
   if (!d.scamType) e.scamType = 'Pick the closest type, or “Something else”.';
   const len = d.description.trim().length;
   if (len < 10) e.description = 'Tell us a little more (at least 10 characters).';
-  else if (len > 500) e.description = 'Please keep it under 500 characters.';
+  else if (len > 1000) e.description = 'Please keep it under 1000 characters.';
   if (d.sender.trim().length > 100) e.sender = 'That’s too long for a number or link.';
   if (!d.suburb) e.suburb = 'Choose the area you’re in, so others nearby are warned.';
   return e;
@@ -76,7 +76,7 @@ export function ReportForm({ initial, submitLabel, onSubmit, busy }: Props) {
         value={draft.description}
         onChangeText={(v) => set('description', v)}
         multiline
-        maxLength={500}
+        maxLength={1000}
         error={errors.description}
       />
 
