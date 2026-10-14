@@ -8,9 +8,9 @@ import type {
   AlertItem,
   AreaStat,
   Channel,
-  ChatTurn,
   CheckInput,
   CheckResult,
+  ChatMessage,
   Circulating,
   Explainer,
   GuardianLink,
@@ -122,9 +122,14 @@ export async function listMyChecks() {
   return get<CheckResult[]>('/checks');
 }
 
-/** A free-form follow-up question about an existing check, grounded in its verdict. Nothing here is saved. */
-export async function askAboutCheck(checkId: string, question: string, history: ChatTurn[]) {
-  const { answer } = await post<{ answer: string }>(`/checks/${checkId}/messages`, { question, history });
+/** The saved follow-up chat on a check, oldest first. */
+export async function listCheckMessages(checkId: string) {
+  return get<ChatMessage[]>(`/checks/${checkId}/messages`);
+}
+
+/** A free-form follow-up question about an existing check. The server keeps the thread. */
+export async function askAboutCheck(checkId: string, question: string) {
+  const { answer } = await post<{ answer: string }>(`/checks/${checkId}/messages`, { question });
   return answer;
 }
 

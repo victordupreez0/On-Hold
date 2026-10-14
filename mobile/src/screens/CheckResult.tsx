@@ -1,17 +1,20 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, usePathname } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
-import { Button, ErrorState, Feather, Header, Loading, Screen, Section, T, TextField } from '@/components/ui';
+import { Logo } from '@/components/Logo';
+import { Button, ErrorState, Feather, Header, Loading, Screen, Section, T } from '@/components/ui';
 import { VerdictBanner } from '@/components/VerdictBanner';
 import { useUser } from '@/session';
 import { colors, minTouch, radius, space } from '@/theme';
 import { useToast } from '@/toast';
-import type { ChatTurn, CheckResult } from '@/types';
+import type { CheckResult as Check } from '@/types';
 import { useLoad } from '@/useLoad';
 
-export default function VerdictScreen() {
+/** The verdict for one check. Routed from both the Check tab (right after checking) and
+ * Home's history, so links below stay inside whichever tab you came from. */
+export default function CheckResult() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const check = useLoad(() => api.getCheck(id), id);
 
@@ -29,9 +32,10 @@ export default function VerdictScreen() {
   );
 }
 
-function Result({ check }: { check: CheckResult }) {
+function Result({ check }: { check: Check }) {
   const user = useUser();
   const toast = useToast();
+  const fromHistory = usePathname().startsWith('/history');
   const [sending, setSending] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const risky = check.verdict !== 'safe';
@@ -49,9 +53,14 @@ function Result({ check }: { check: CheckResult }) {
   };
 
   const done = () => {
-    // Leave the Check tab fresh for next time, then go home.
+    // Leave the stack fresh for next time, then go home.
     if (router.canDismiss()) router.dismissAll();
     router.navigate('/');
+  };
+
+  const report = () => {
+    const params = { checkId: check.id, scamType: check.scamType ?? 'other', channel: check.kind === 'call' ? 'call' : 'sms' };
+    router.push(fromHistory ? { pathname: '/reports/new', params } : { pathname: '/check/report', params });
   };
 
   return (
@@ -107,6 +116,8 @@ function Result({ check }: { check: CheckResult }) {
         )}
       </View>
 
+      <ChatEntry checkId={check.id} fromHistory={fromHistory} />
+
       <View style={{ gap: space.sm + 2 }}>
         <Button label="Done" variant="dark" onPress={done} />
         {risky && (
@@ -114,24 +125,10 @@ function Result({ check }: { check: CheckResult }) {
             {user.role !== 'guardian' && (
               <Button label="Tell family" icon="users" variant="ghost" loading={sending} onPress={tellFamily} style={{ flex: 1, paddingHorizontal: space.sm }} />
             )}
-            <Button
-              label="Report it"
-              icon="flag"
-              variant="ghost"
-              accessibilityHint="Warn people in your area"
-              style={{ flex: 1, paddingHorizontal: space.sm }}
-              onPress={() =>
-                router.push({
-                  pathname: '/check/report',
-                  params: { checkId: check.id, scamType: check.scamType ?? 'other', channel: check.kind === 'call' ? 'call' : 'sms' },
-                })
-              }
-            />
+            <Button label="Report it" icon="flag" variant="ghost" accessibilityHint="Warn people in your area" style={{ flex: 1, paddingHorizontal: space.sm }} onPress={report} />
           </View>
         )}
       </View>
-
-      <AskFollowUp checkId={check.id} />
 
       <T v="small" color={colors.inkSoft} style={{ textAlign: 'center' }}>
         On Hold can make mistakes. If something still feels wrong, trust that feeling.
@@ -140,59 +137,30 @@ function Result({ check }: { check: CheckResult }) {
   );
 }
 
-/** A short, human follow-up chat grounded in this verdict. Nothing here is saved -- it lives only
- * as long as this screen is open, same as the message you checked never was. */
-function AskFollowUp({ checkId }: { checkId: string }) {
-  const [messages, setMessages] = useState<ChatTurn[]>([]);
-  const [question, setQuestion] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const ask = async () => {
-    const text = question.trim();
-    if (!text || busy) return;
-    setQuestion('');
-    setError(null);
-    const history = [...messages, { role: 'user', content: text } satisfies ChatTurn];
-    setMessages(history);
-    setBusy(true);
-    try {
-      const answer = await api.askAboutCheck(checkId, text, messages);
-      setMessages([...history, { role: 'assistant', content: answer }]);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
+/** The way into the follow-up chat; previews the last answer once there is one. */
+function ChatEntry({ checkId, fromHistory }: { checkId: string; fromHistory: boolean }) {
+  const messages = useLoad(() => api.listCheckMessages(checkId), checkId);
+  const last = messages.data?.findLast((m) => m.role === 'assistant');
+  const open = () =>
+    router.push(fromHistory ? { pathname: '/history/[id]/chat', params: { id: checkId } } : { pathname: '/check/[id]/chat', params: { id: checkId } });
 
   return (
-    <Section title="Still wondering something?">
-      {messages.length > 0 && (
-        <View style={{ gap: space.sm }}>
-          {messages.map((m, i) => (
-            <View key={i} style={[styles.bubble, m.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant]}>
-              <T color={m.role === 'user' ? colors.white : colors.ink}>{m.content}</T>
-            </View>
-          ))}
-        </View>
-      )}
-      {busy && (
-        <View style={[styles.bubble, styles.bubbleAssistant]}>
-          <T color={colors.inkSoft}>Thinking…</T>
-        </View>
-      )}
-      <TextField
-        label="Ask a follow-up question"
-        placeholder="E.g. “What if they call again?”"
-        value={question}
-        onChangeText={setQuestion}
-        onSubmitEditing={ask}
-        error={error}
-        returnKeyType="send"
-      />
-      <Button label="Ask" icon="send" variant="ghost" loading={busy} disabled={!question.trim()} onPress={ask} />
-    </Section>
+    <Pressable
+      onPress={open}
+      accessibilityRole="button"
+      accessibilityLabel={last ? 'Continue your chat about this' : 'Ask On Hold a question about this'}
+      style={({ pressed }) => [styles.chat, pressed && { transform: [{ scale: 0.98 }] }]}>
+      <View style={styles.chatAvatar}>
+        <Logo size={30} onYellow />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <T v="label">{last ? 'Your chat about this' : 'Still wondering something?'}</T>
+        <T v="small" color={colors.inkSoft} numberOfLines={2}>
+          {last ? last.content : 'Ask On Hold anything about this, like “What if they call again?”'}
+        </T>
+      </View>
+      <Feather name="message-circle" size={22} color={colors.ink} />
+    </Pressable>
   );
 }
 
@@ -212,7 +180,14 @@ const styles = StyleSheet.create({
   whyBody: { paddingHorizontal: space.md, paddingBottom: space.md, gap: space.sm + 2 },
   reason: { flexDirection: 'row', gap: space.sm + 4, alignItems: 'flex-start' },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.ink, marginTop: 9, marginLeft: 6 },
-  bubble: { borderRadius: radius.lg, padding: space.sm + 4, maxWidth: '88%' },
-  bubbleUser: { backgroundColor: colors.ink, alignSelf: 'flex-end' },
-  bubbleAssistant: { backgroundColor: colors.grey, alignSelf: 'flex-start' },
+  chat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    minHeight: 76,
+    padding: space.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.grey,
+  },
+  chatAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.highlighter, alignItems: 'center', justifyContent: 'center' },
 });
