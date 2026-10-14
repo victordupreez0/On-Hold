@@ -3,16 +3,17 @@ error messages, same business rules -- so the frontend's api.ts wrapper can
 become a thin fetch layer without touching any screen.
 """
 
-import random
 import re
+import secrets
 import string
 import uuid
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from pydantic import BaseModel, Field
 
@@ -30,6 +31,19 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="On Hold API", lifespan=lifespan)
+
+_MAX_BODY_BYTES = 8 * 1024 * 1024  # a 5MB screenshot as base64 plus JSON, with room to spare
+
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    """FastAPI reads the whole body before auth runs, so cap it before anything else does.
+    ponytail: trusts Content-Length; a chunked upload without one is left to the hosting proxy."""
+    if int(request.headers.get("content-length") or 0) > _MAX_BODY_BYTES:
+        return JSONResponse({"detail": "That’s too big to send. Try a screenshot instead of a photo."}, status_code=413)
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in get_settings().cors_origins.split(",")],
@@ -53,7 +67,7 @@ def _found(row: dict | None, message: str) -> dict:
 
 
 def _require_suburb(name: str | None):
-    if name and not one("select 1 from suburbs where name = %(n)s", {"n": name}):
+    if name is not None and not one("select 1 from suburbs where name = %(n)s", {"n": name}):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a suburb from the list.")
 
 
@@ -93,13 +107,21 @@ def get_me(user: User):
 
 
 class ProfilePatch(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=100)
+    name: str = Field(default=None, min_length=1, max_length=100)
     phone: str | None = Field(default=None, max_length=30)
-    simpleMode: bool | None = None
+    simpleMode: bool = None
     suburb: str | None = None
 
 
 _PROFILE_COLUMNS = {"name": "name", "phone": "phone", "simpleMode": "simple_mode", "suburb": "suburb"}
+
+
+@app.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(user: User):
+    """POPIA-style right to erasure: the person removes their own account and everything tied to it."""
+    if _is_last_admin(user.id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You’re the last admin, so you can’t delete your account.")
+    _delete_auth_user(user.id)
 
 
 @app.patch("/me")
@@ -124,8 +146,8 @@ _CHECK_FIELDS = """id, user_id as "userId", kind, verdict, confidence, scam_type
 
 
 class ImageInput(BaseModel):
-    base64: str
-    mediaType: str | None = None  # ignored: the real type is read from the bytes (see ai._image_block)
+    base64: str = Field(max_length=7_500_000)  # ~5MB decoded; ai.image_block gives the friendly message
+    mediaType: str | None = None  # ignored: the real type is read from the bytes (see ai.image_block)
 
 
 class CheckInput(BaseModel):
@@ -136,6 +158,14 @@ class CheckInput(BaseModel):
 
 @app.post("/checks")
 def create_check(body: CheckInput, user: User):
+    # Cheap input problems answer before spending one of the person's hourly AI calls.
+    if not (body.text or "").strip() and not body.image:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Paste, type or share something to check first.")
+    if body.image:
+        try:
+            ai.image_block(body.image.base64)
+        except ai.BadImage as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     _check_rate_limit(user.id)
 
     try:
@@ -181,6 +211,13 @@ def list_my_checks(user: User):
 def get_check(check_id: uuid.UUID, user: User):
     row = one(f"select {_CHECK_FIELDS} from checks where id = %(id)s and user_id = %(uid)s", {"id": check_id, "uid": user.id})
     return _found(row, "We couldn’t find that check.")
+
+
+@app.delete("/checks/{check_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_check(check_id: uuid.UUID, user: User):
+    """Its follow-up chat goes with it (cascade). Alerts a guardian already received keep their text."""
+    row = one("delete from checks where id = %(id)s and user_id = %(uid)s returning id", {"id": check_id, "uid": user.id})
+    _found(row, "We couldn’t find that check.")
 
 
 @app.post("/checks/{check_id}/alert")
@@ -260,7 +297,7 @@ class ReportInput(BaseModel):
     scamType: ScamType
     description: str = Field(min_length=10, max_length=1000)
     sender: str | None = Field(default=None, max_length=200)
-    suburb: str
+    suburb: str = Field(min_length=1)
     checkId: uuid.UUID | None = None
 
 
@@ -278,6 +315,8 @@ def get_report(report_id: uuid.UUID, user: User):
 @app.post("/reports")
 def create_report(body: ReportInput, user: User):
     _require_suburb(body.suburb)
+    if body.checkId and not one("select 1 from checks where id = %(c)s and user_id = %(u)s", {"c": body.checkId, "u": user.id}):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "We couldn’t find that check.")
     return one(
         f"""insert into reports (reporter_id, check_id, channel, scam_type, description, sender, suburb)
             values (%(reporterId)s, %(checkId)s, %(channel)s, %(scamType)s, %(description)s, %(sender)s, %(suburb)s)
@@ -348,6 +387,7 @@ def list_circulating(user: User):
 
 _LINK_FIELDS = """l.id, l.guardian_id as "guardianId", gp.name as "guardianName", gp.phone as "guardianPhone",
     l.protected_id as "protectedId", l.protected_name as "protectedName", l.invited_phone as "invitedPhone",
+    coalesce((select pp.phone from profiles pp where pp.id = l.protected_id), l.invited_phone) as "protectedPhone",
     l.code, l.status, l.share_calls as "shareCalls", l.share_verdicts as "shareVerdicts" """
 _LINK_JOIN = "from guardian_links l join profiles gp on gp.id = l.guardian_id"
 # UPDATE ... SET ... FROM can't re-mention the target table, so updates join
@@ -364,19 +404,24 @@ def get_family(user: User):
 
 
 class InviteInput(BaseModel):
-    name: str
-    phone: str
+    name: str = Field(min_length=1, max_length=100)
+    phone: str = Field(min_length=1, max_length=30)
 
 
 @app.post("/invites")
 def create_invite(body: InviteInput, user: User):
-    code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    execute(
-        """insert into guardian_links (guardian_id, protected_name, invited_phone, code)
-           values (%(guardianId)s, %(name)s, %(phone)s, %(code)s)""",
-        {"guardianId": user.id, "name": body.name.strip(), "phone": re.sub(r"\s", "", body.phone), "code": code},
-    )
-    return {"code": code}
+    for _ in range(3):  # a 6-char code can collide; just draw again
+        code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+        try:
+            execute(
+                """insert into guardian_links (guardian_id, protected_name, invited_phone, code)
+                   values (%(guardianId)s, %(name)s, %(phone)s, %(code)s)""",
+                {"guardianId": user.id, "name": body.name.strip(), "phone": re.sub(r"\s", "", body.phone), "code": code},
+            )
+            return {"code": code}
+        except UniqueViolation:
+            continue
+    raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Couldn’t make an invite right now. Try again.")
 
 
 @app.get("/invites/{code}")
@@ -407,13 +452,17 @@ def accept_invite(code: str, body: ShareInput, user: User):
     if dup:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{link['guardianName']} is already looking out for you.")
 
-    row = one(
-        f"""update guardian_links l set protected_id = %(uid)s, protected_name = %(name)s, status = 'active',
-            share_calls = %(shareCalls)s, share_verdicts = %(shareVerdicts)s
-            {_LINK_UPDATE_FROM} and l.id = %(id)s
-            returning {_LINK_FIELDS}""",
-        {"uid": user.id, "name": user.row["name"], "shareCalls": body.shareCalls, "shareVerdicts": body.shareVerdicts, "id": link["id"]},
-    )
+    try:
+        row = one(
+            f"""update guardian_links l set protected_id = %(uid)s, protected_name = %(name)s, status = 'active',
+                share_calls = %(shareCalls)s, share_verdicts = %(shareVerdicts)s
+                {_LINK_UPDATE_FROM} and l.id = %(id)s and l.status = 'pending'
+                returning {_LINK_FIELDS}""",
+            {"uid": user.id, "name": user.row["name"], "shareCalls": body.shareCalls, "shareVerdicts": body.shareVerdicts, "id": link["id"]},
+        )
+    except UniqueViolation:  # accepted another code from the same guardian a moment ago
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{link['guardianName']} is already looking out for you.")
+    row = _found(row, "This invite has expired or was already used.")  # someone else accepted it, or it was cancelled
     _push_alert(link["id"], user.row["name"], "invite_accepted", None, "Accepted your invite")
     return row
 
@@ -528,7 +577,7 @@ _ADMIN_REPORT_FIELDS = _REPORT_FIELDS + ', moderated_by as "moderatedBy", modera
 
 @app.get("/admin/reports")
 def list_all_reports(
-    _: Admin, status: ReportStatus | None = None, scamType: ScamType | None = None, search: str | None = None, limit: int = 50, offset: int = 0
+    _: Admin, status: ReportStatus | None = None, scamType: ScamType | None = None, search: str | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)
 ):
     pattern = f"%{search}%" if search else None
     return query(
@@ -590,7 +639,7 @@ _USER_FIELDS = """id, name, email, phone, role, simple_mode as "simpleMode", sub
 
 
 @app.get("/admin/users")
-def list_users(_: Admin, search: str | None = None, role: Role | None = None, limit: int = 50, offset: int = 0):
+def list_users(_: Admin, search: str | None = None, role: Role | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
     pattern = f"%{search}%" if search else None
     return query(
         f"""select {_USER_FIELDS} from profiles
@@ -624,9 +673,14 @@ class RoleInput(BaseModel):
 def update_user_role(user_id: uuid.UUID, body: RoleInput, admin: Admin):
     if user_id == admin.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can’t change your own role.")
-    if body.role != "admin" and _is_last_admin(user_id):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Can’t remove the last admin.")
-    row = one(f"update profiles set role = %(role)s where id = %(id)s returning {_USER_FIELDS}", {"role": body.role, "id": user_id})
+    with transaction() as cur:
+        if body.role != "admin":
+            # FOR UPDATE makes a concurrent demotion wait and then re-count, so the two can't both pass.
+            cur.execute("select id from profiles where role = 'admin' for update")
+            if {r["id"] for r in cur.fetchall()} == {user_id}:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Can’t remove the last admin.")
+        cur.execute(f"update profiles set role = %(role)s where id = %(id)s returning {_USER_FIELDS}", {"role": body.role, "id": user_id})
+        row = cur.fetchone()
     return _found(row, "We couldn’t find that user.")
 
 
@@ -638,13 +692,18 @@ def delete_user(user_id: uuid.UUID, admin: Admin):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "We couldn’t find that user.")
     if _is_last_admin(user_id):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Can’t delete the last admin.")
-    # Deleting only the profile row would orphan a still-signable-in auth account;
-    # deleting the auth user cascades to profiles (and from there to their checks,
-    # reports, guardian links and alerts).
+    _delete_auth_user(user_id)
+
+
+def _delete_auth_user(user_id: uuid.UUID):
+    """Deleting only the profile row would orphan a still-signable-in auth account;
+    deleting the auth user cascades to profiles (and from there to their checks,
+    chats, reports, guardian links and alerts)."""
     settings = get_settings()
     res = httpx.delete(
         f"{settings.supabase_url}/auth/v1/admin/users/{user_id}",
         headers={"apikey": settings.supabase_service_role_key, "Authorization": f"Bearer {settings.supabase_service_role_key}"},
+        timeout=15,
     )
     if res.status_code not in (200, 204):
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Couldn’t delete that account right now.")

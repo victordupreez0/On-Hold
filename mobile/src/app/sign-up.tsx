@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
-import { Button, Feather, Header, Screen, T, TextField, TextLink, type IconName } from '@/components/ui';
+import { Button, EmptyState, Feather, Header, Screen, T, TextField, TextLink, type IconName } from '@/components/ui';
 import { useSession } from '@/session';
 import { colors, radius, space } from '@/theme';
 import type { Role } from '@/types';
@@ -24,6 +24,7 @@ export default function SignUp() {
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const submit = async () => {
     const next = {
@@ -37,13 +38,23 @@ export default function SignUp() {
     if (Object.values(next).some(Boolean) || !role) return;
     setBusy(true);
     try {
-      setUser(await api.signUp({ name, email, password, role }));
+      const user = await api.signUp({ name, email, password, role });
+      if (user) setUser(user);
+      else setSentTo(email.trim()); // it worked -- they just need to confirm first, so don't show it as an error
     } catch (e) {
       setFormError((e as Error).message);
     } finally {
       setBusy(false);
     }
   };
+
+  if (sentTo) {
+    return (
+      <Screen edges={['top', 'bottom']} footer={<Button label="Go to sign in" variant="dark" onPress={() => router.replace('/sign-in')} />}>
+        <EmptyState icon="mail" title="Check your email" body={`We sent a link to ${sentTo}. Tap it to confirm your account, then come back and sign in.`} />
+      </Screen>
+    );
+  }
 
   return (
     <Screen edges={['top', 'bottom']} footer={<Button label="Create account" onPress={submit} loading={busy} />}>

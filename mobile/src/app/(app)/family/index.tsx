@@ -1,7 +1,7 @@
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, Share, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
 import { confirm } from '@/confirm';
@@ -12,6 +12,7 @@ import {
   ErrorState,
   Feather,
   ListGroup,
+  Header,
   ListRow,
   Loading,
   PageTitle,
@@ -25,7 +26,7 @@ import {
   type IconName,
 } from '@/components/ui';
 import { useUser } from '@/session';
-import { colors, minTouch, space } from '@/theme';
+import { colors, font, minTouch, space } from '@/theme';
 import { useToast } from '@/toast';
 import type { AlertItem, GuardianLink } from '@/types';
 import { useLoad } from '@/useLoad';
@@ -70,7 +71,7 @@ function GuardianView() {
           <Section title="People you look out for">
             <ListGroup>
               {family.data.lookingAfter.map((l) => (
-                <Person key={l.id} link={l} latest={alerts.data?.find((a) => a.linkId === l.id && a.type !== 'invite_accepted')} />
+                <Person key={l.id} link={l} latest={alerts.data?.find((a) => a.linkId === l.id && a.type !== 'invite_accepted')} onChanged={family.reload} />
               ))}
             </ListGroup>
           </Section>
@@ -98,16 +99,42 @@ function GuardianView() {
   );
 }
 
-function Person({ link, latest }: { link: GuardianLink; latest?: AlertItem }) {
+function Person({ link, latest, onChanged }: { link: GuardianLink; latest?: AlertItem; onChanged: () => void }) {
+  const user = useUser();
+  const toast = useToast();
   const pending = link.status === 'pending';
   const atRisk = latest?.type === 'stop_verdict' && hoursSince(latest.createdAt) < 24;
   const status = pending ? (
     <Pill label="Invite sent" icon="clock" bg={colors.waitTint} />
   ) : atRisk ? (
     <Pill label={`Stop ${timeAgo(latest!.createdAt)}`} icon="octagon" bg={colors.stop} fg={colors.white} />
+  ) : !link.shareVerdicts ? (
+    // "All calm" would be a promise we can't keep: they've chosen not to share Stops.
+    <Pill label="Not sharing alerts" icon="eye-off" />
   ) : (
     <Pill label="All calm" icon="check" bg={colors.safeTint} />
   );
+
+  const shareCode = () =>
+    Share.share({
+      message: `Hi ${link.protectedName}, it’s ${user.name}. I’ve set up On Hold so I can help if a scam message or call ever comes your way. You choose what I see. Open On Hold and enter code ${link.code}`,
+    }).catch(() => {});
+
+  const remove = async () => {
+    const ok = pending
+      ? await confirm('Cancel this invite?', `The code for ${link.protectedName} will stop working.`, 'Cancel invite', true)
+      : await confirm(`Stop looking out for ${link.protectedName}?`, 'You won’t get their alerts any more. They can invite you again later.', 'Stop', true);
+    if (!ok) return;
+    try {
+      await api.removeLink(link.id);
+      toast(pending ? 'Invite cancelled.' : `You’ll no longer get ${link.protectedName}’s alerts.`);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      onChanged();
+    }
+  };
+
   return (
     <View style={styles.person}>
       <View style={[styles.avatar, atRisk && { backgroundColor: colors.stop }]}>
@@ -118,10 +145,24 @@ function Person({ link, latest }: { link: GuardianLink; latest?: AlertItem }) {
       <View style={{ flex: 1, gap: 6 }}>
         <T v="label">{link.protectedName}</T>
         {status}
+        <View style={styles.personActions}>
+          {pending && (
+            <Pressable onPress={shareCode} accessibilityRole="button" accessibilityLabel={`Share invite code ${link.code.split('').join(' ')}`} style={styles.personAction}>
+              <T v="small" style={styles.actionText}>
+                Code {link.code} · Share
+              </T>
+            </Pressable>
+          )}
+          <Pressable onPress={remove} accessibilityRole="button" style={styles.personAction}>
+            <T v="small" color={colors.inkSoft} style={styles.actionText}>
+              {pending ? 'Cancel' : 'Stop looking out'}
+            </T>
+          </Pressable>
+        </View>
       </View>
-      {link.invitedPhone && !pending && (
+      {link.protectedPhone && !pending && (
         <Pressable
-          onPress={() => Linking.openURL(`tel:${link.invitedPhone}`)}
+          onPress={() => Linking.openURL(`tel:${link.protectedPhone}`)}
           accessibilityRole="button"
           accessibilityLabel={`Call ${link.protectedName}`}
           style={({ pressed }) => [styles.callButton, pressed && { transform: [{ scale: 0.95 }] }]}>
@@ -135,6 +176,7 @@ function Person({ link, latest }: { link: GuardianLink; latest?: AlertItem }) {
 // ---------- Protected: who looks out for me, and what they can see ----------
 
 function ProtectedView() {
+  const user = useUser();
   const family = useLoad(api.getFamily);
   const toast = useToast();
 
@@ -168,6 +210,8 @@ function ProtectedView() {
 
   return (
     <Screen>
+      {/* Simple mode reaches Family only from Home, with no tab bar to get back. */}
+      {user.simpleMode && <Header />}
       <PageTitle title="Family" subtitle="Someone you trust can get a heads-up if something looks like a scam." />
 
       {family.error ? (
@@ -231,6 +275,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.line },
+  personActions: { flexDirection: 'row', flexWrap: 'wrap', columnGap: space.md },
+  personAction: { minHeight: minTouch, justifyContent: 'center' },
+  actionText: { textDecorationLine: 'underline', fontFamily: font.semibold },
   stopRow: { minHeight: minTouch, justifyContent: 'center' },
   privacy: { flexDirection: 'row', gap: space.sm, alignItems: 'center', paddingHorizontal: space.xs },
 });

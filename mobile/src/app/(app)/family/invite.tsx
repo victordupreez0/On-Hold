@@ -5,13 +5,12 @@ import { Share, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
 import { Button, Feather, Header, Screen, T, TextField } from '@/components/ui';
+import { isSaCell } from '@/phone';
 import { useUser } from '@/session';
 import { colors, radius, space } from '@/theme';
 import { useToast } from '@/toast';
 
 // SA cellphone numbers: 0XX XXX XXXX or +27 XX XXX XXXX.
-const CELL = /^(\+27|0)[6-8]\d{8}$/;
-
 export default function Invite() {
   const user = useUser();
   const toast = useToast();
@@ -24,7 +23,7 @@ export default function Invite() {
   const create = async () => {
     const next = {
       name: name.trim() ? undefined : 'Who are you inviting?',
-      phone: CELL.test(phone.replace(/\s/g, '')) ? undefined : 'Enter a South African cellphone number, like 082 123 4567.',
+      phone: isSaCell(phone) ? undefined : 'Enter a South African cellphone number, like 082 123 4567.',
     };
     setErrors(next);
     if (next.name || next.phone) return;

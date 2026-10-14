@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
-import { Feather, ListGroup, ListRow, Loading, PageTitle, Screen, Section, T } from '@/components/ui';
+import { ErrorState, Feather, ListGroup, ListRow, Loading, PageTitle, Screen, Section, T } from '@/components/ui';
 import { CHANNEL_ICONS, SCAM_LABELS } from '@/fixtures';
 import { colors, radius, space } from '@/theme';
 import type { Explainer, ScamType } from '@/types';
@@ -62,7 +62,9 @@ export default function Learn() {
       )}
 
       <Section title="Common scams in South Africa">
-        {!explainers.data ? (
+        {explainers.error ? (
+          <ErrorState message={explainers.error} onRetry={explainers.reload} />
+        ) : !explainers.data ? (
           <Loading />
         ) : (
           <ListGroup>

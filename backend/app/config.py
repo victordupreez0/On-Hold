@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str
     anthropic_model: str = "claude-sonnet-5"
     cors_origins: str = "http://localhost:8081"
+    # Enables the "test-error" phrase that forces the check-failed screen for a live demo. Never in production.
+    demo_hooks: bool = False
 
     @property
     def jwks_url(self) -> str:

@@ -83,7 +83,7 @@ function FullHome({ user }: { user: User }) {
     <Screen edges={[]} style={{ paddingTop: 0 }}>
       <Hero user={user} />
       <Segments value={tab} onChange={setTab} />
-      {tab === 'today' ? <Today user={user} checks={checks.data} onSeeAll={() => setTab('history')} /> : <History checks={checks} />}
+      {tab === 'today' ? <Today user={user} checks={checks} onSeeAll={() => setTab('history')} /> : <History checks={checks} />}
     </Screen>
   );
 }
@@ -124,32 +124,66 @@ function CheckRow({ check }: { check: CheckResult }) {
 }
 
 /** What matters right now: your latest checks, one tip, and what's going around. */
-function Today({ user, checks, onSeeAll }: { user: User; checks?: CheckResult[]; onSeeAll: () => void }) {
+type ChecksLoad = { data?: CheckResult[]; error?: string; reload: () => void };
+
+function Today({ user, checks, onSeeAll }: { user: User; checks: ChecksLoad; onSeeAll: () => void }) {
   const family = useLoad(api.getFamily);
   const circulating = useLoad(api.listCirculating);
   const pending = useLoad(() => (user.role === 'admin' ? api.listPendingReports() : Promise.resolve([])), user.role);
+  // A guardian's whole reason to open the app: someone they look out for just got a warning.
+  const alerts = useLoad(() => (user.role === 'guardian' ? api.listAlerts() : Promise.resolve([])), user.role);
   const explainers = useLoad(api.listExplainers);
 
   const near = circulating.data?.[0];
   const nearGuide = near && explainers.data?.find((e) => e.scamType === near.scamType);
-  const recent = checks?.slice(0, 3);
+  const recent = checks.data?.slice(0, 3);
+  const fresh = alerts.data?.filter((a) => !a.seen).slice(0, 3) ?? [];
 
   return (
     <>
-      {!!pending.data?.length && (
+      {(!!pending.data?.length || fresh.length > 0) && (
+        <Section title="Needs you">
+          <ListGroup>
+            {fresh.map((a) => (
+              <ListRow
+                key={a.id}
+                icon={a.type === 'stop_verdict' ? 'octagon' : 'bell'}
+                iconBg={a.type === 'stop_verdict' ? colors.stop : colors.highlighter}
+                iconColor={a.type === 'stop_verdict' ? colors.white : colors.ink}
+                title={a.personName}
+                subtitle={`${a.detail} · ${timeAgo(a.createdAt)}`}
+                onPress={() => router.navigate('/family')}
+              />
+            ))}
+            {!!pending.data?.length && (
+              <ListRow
+                icon="shield"
+                iconBg={colors.highlighter}
+                title={`${pending.data.length} ${pending.data.length === 1 ? 'report' : 'reports'} to review`}
+                subtitle="Approve real scams so they warn people nearby"
+                onPress={() => router.push('/admin/reports')}
+              />
+            )}
+          </ListGroup>
+        </Section>
+      )}
+
+      {!user.suburb && (
         <ListGroup>
           <ListRow
-            icon="shield"
+            icon="map-pin"
             iconBg={colors.highlighter}
-            title={`${pending.data.length} ${pending.data.length === 1 ? 'report' : 'reports'} to review`}
-            subtitle="Approve real scams so they warn people nearby"
-            onPress={() => router.push('/admin')}
+            title="Set your area"
+            subtitle="So we can warn you about scams going around near you"
+            onPress={() => router.push('/settings')}
           />
         </ListGroup>
       )}
 
-      <Section title="Recent" action={!!checks && checks.length > 3 && <TextLink label="See all" onPress={onSeeAll} />}>
-        {!recent ? (
+      <Section title="Recent" action={!!checks.data && checks.data.length > 3 && <TextLink label="See all" onPress={onSeeAll} />}>
+        {checks.error ? (
+          <ErrorState message={checks.error} onRetry={checks.reload} />
+        ) : !recent ? (
           <Loading />
         ) : recent.length ? (
           <ListGroup>
@@ -177,7 +211,7 @@ function Today({ user, checks, onSeeAll }: { user: User; checks?: CheckResult[];
                 icon="trending-up"
                 title={`Going around: ${SCAM_LABELS[near.scamType]}`}
                 subtitle={near.nearYou ? `${near.nearYou} reports near you this fortnight` : `${near.count} reports this fortnight`}
-                onPress={() => (nearGuide ? router.navigate(`/learn/${nearGuide.slug}`) : router.navigate('/learn'))}
+                onPress={() => (nearGuide ? router.push({ pathname: '/guide/[slug]', params: { slug: nearGuide.slug } }) : router.navigate('/learn'))}
               />
             )}
             {family.data && <FamilyRow user={user} family={family.data} />}
@@ -196,9 +230,9 @@ function TipOfTheDay({ guides }: { guides: Explainer[] }) {
   return (
     <Section title="Tip for today">
       <Pressable
-        onPress={() => router.navigate(`/learn/${guide.slug}`)}
+        onPress={() => router.push({ pathname: '/guide/[slug]', params: { slug: guide.slug } })}
         accessibilityRole="button"
-        accessibilityLabel={`Tip for today: ${tip}. Read more about ${guide.title}`}
+        accessibilityLabel={`Tip for today: ${tip.replace(/\.$/, '')}. Read more about ${guide.title}`}
         style={({ pressed }) => [styles.tip, pressed && { transform: [{ scale: 0.98 }] }]}>
         <View style={styles.tipIcon}>
           <Feather name="sun" size={20} color={colors.ink} />
@@ -217,7 +251,7 @@ function TipOfTheDay({ guides }: { guides: Explainer[] }) {
 }
 
 /** Every check you've made, newest first, with how much you asked about each. */
-function History({ checks }: { checks: { data?: CheckResult[]; error?: string; reload: () => void } }) {
+function History({ checks }: { checks: ChecksLoad }) {
   if (checks.error) return <ErrorState message={checks.error} onRetry={checks.reload} />;
   if (!checks.data) return <Loading />;
   if (!checks.data.length) {
@@ -269,10 +303,11 @@ function FamilyRow({ user, family }: { user: User; family: Family }) {
 /** Simple mode: one button to check, one to call family (pitch: "One button for Ouma"). */
 function SimpleHome({ user }: { user: User }) {
   const family = useLoad(api.getFamily);
-  const helper = family.data?.lookedAfterBy.find((l) => l.status === 'active' && l.guardianPhone);
+  const linked = family.data?.lookedAfterBy.filter((l) => l.status === 'active') ?? [];
+  const helper = linked.find((l) => l.guardianPhone);
 
   return (
-    <Screen edges={['top', 'bottom']}>
+    <Screen>
       <View style={styles.simpleTop}>
         <T v="title">Hi {user.name}</T>
         <Pressable onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Settings" style={styles.settingsButton}>
@@ -307,6 +342,18 @@ function SimpleHome({ user }: { user: User }) {
             Call {helper.guardianName}
           </T>
         </Pressable>
+      )}
+      {/* Simple mode has no tab bar, so this is the only way in to linking family. */}
+      {family.data && !linked.length && (
+        <Pressable onPress={() => router.push('/family/accept')} accessibilityRole="button" style={styles.simpleButton}>
+          <Feather name="key" size={26} color={colors.ink} />
+          <T v="heading">I have a family invite code</T>
+        </Pressable>
+      )}
+      {!!linked.length && !helper && (
+        <T v="small" color={colors.inkSoft} style={{ textAlign: 'center' }}>
+          Ask {linked[0].guardianName} to add their phone number in On Hold, and a button to call them will appear here.
+        </T>
       )}
     </Screen>
   );
@@ -352,7 +399,7 @@ const styles = StyleSheet.create({
   },
   pauseBar: { width: 5, height: 16, borderRadius: 3, backgroundColor: colors.ink },
   segments: { flexDirection: 'row', backgroundColor: colors.grey, borderRadius: radius.pill, padding: 4, marginBottom: -space.sm },
-  segment: { flex: 1, minHeight: minTouch - 4, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  segment: { flex: 1, minHeight: minTouch, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   segmentOn: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
   emptyRecent: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.hairline },
   tip: { flexDirection: 'row', gap: space.md, padding: space.md + 2, borderRadius: radius.lg, backgroundColor: colors.waitTint },

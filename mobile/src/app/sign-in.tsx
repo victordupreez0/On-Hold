@@ -59,17 +59,20 @@ export default function SignIn() {
       />
       <TextLink label="New here? Create an account" onPress={() => router.replace('/sign-up')} />
 
-      <Card>
-        <T v="label">Demo accounts</T>
-        <T v="small" color={colors.inkSoft}>
-          Pick one, then sign in with the password onhold-demo.
-        </T>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
-          {DEMO.map((d) => (
-            <Chip key={d.email} label={d.label} selected={email === d.email} onPress={() => setEmail(d.email)} />
-          ))}
-        </View>
-      </Card>
+      {/* Dev builds only (Expo Go, the dev server): never ships a shared password in a store build. */}
+      {__DEV__ && (
+        <Card>
+          <T v="label">Demo accounts</T>
+          <T v="small" color={colors.inkSoft}>
+            Pick one, then sign in with the password onhold-demo.
+          </T>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            {DEMO.map((d) => (
+              <Chip key={d.email} label={d.label} selected={email === d.email} onPress={() => setEmail(d.email)} />
+            ))}
+          </View>
+        </Card>
+      )}
     </Screen>
   );
 }

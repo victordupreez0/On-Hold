@@ -142,26 +142,28 @@ def test_cant_change_own_role(monkeypatch):
     assert res.status_code == 400
 
 
+def _admins_locked(monkeypatch, admin_ids):
+    """Fakes db.transaction(): the FOR UPDATE select returns these admin ids."""
+    cm, cur = _fake_cursor_cm({**_USER_ROW, "role": "guardian"})
+    cur.fetchall.return_value = [{"id": i} for i in admin_ids]
+    monkeypatch.setattr(main, "transaction", lambda: cm)
+    return cur
+
+
 def test_cant_demote_the_last_admin(monkeypatch):
     other_admin = _uuid.uuid4()
     app.dependency_overrides[current_user] = lambda: _admin()
-    monkeypatch.setattr(main, "one", lambda sql, params=None: {"role": "admin"} if "select role" in sql else {"n": 0})
+    cur = _admins_locked(monkeypatch, [other_admin])
     res = client.patch(f"/admin/users/{other_admin}", json={"role": "guardian"})
     assert res.status_code == 400
+    assert "for update" in cur.execute.call_args_list[0].args[0]  # the count is taken under a lock
+    assert not any("update profiles" in c.args[0] for c in cur.execute.call_args_list)
 
 
 def test_can_demote_an_admin_when_another_remains(monkeypatch):
     other_admin = _uuid.uuid4()
     app.dependency_overrides[current_user] = lambda: _admin()
-
-    def fake_one(sql, params=None):
-        if "select role" in sql:
-            return {"role": "admin"}
-        if "count(*)" in sql:
-            return {"n": 1}  # one other admin remains
-        return {**_USER_ROW, "role": "guardian"}
-
-    monkeypatch.setattr(main, "one", fake_one)
+    _admins_locked(monkeypatch, [other_admin, _uuid.uuid4()])  # one other admin remains
     res = client.patch(f"/admin/users/{other_admin}", json={"role": "guardian"})
     assert res.status_code == 200
 
@@ -240,3 +242,27 @@ def test_admin_dashboard_shape(monkeypatch):
     body = res.json()
     assert set(body.keys()) == {"users", "checks", "reports", "aiCallsLast24h", "trend", "activity"}
     assert body["users"]["byRole"] == {"protected": 0, "guardian": 0, "admin": 0}
+
+
+def test_bad_check_input_is_rejected_before_spending_a_rate_limit_slot(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _user()
+    monkeypatch.setattr(main, "_check_rate_limit", lambda _: (_ for _ in ()).throw(AssertionError("rate limit hit")))
+    assert client.post("/checks", json={"kind": "message", "text": "   "}).status_code == 400
+    heic = {"base64": "AAAAGGZ0eXBoZWljcmVzdA==", "mediaType": "image/heic"}
+    assert client.post("/checks", json={"kind": "message", "image": heic}).status_code == 400
+
+
+def test_report_cant_point_at_someone_elses_check(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _user()
+    monkeypatch.setattr(main, "one", lambda sql, params=None: {"x": 1} if "from suburbs" in sql else None)
+    body = {"channel": "sms", "scamType": "bank", "description": "Fake bank SMS with a link", "suburb": "Bellville", "checkId": str(_uuid.uuid4())}
+    assert client.post("/reports", json=body).status_code == 400
+
+
+def test_inputs_that_used_to_500(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _admin()
+    assert client.get("/admin/users?limit=-1").status_code == 422
+    assert client.patch("/me", json={"name": None}).status_code == 422
+    assert client.patch("/me", json={"simpleMode": None}).status_code == 422
+    big = client.post("/checks", content=b"x", headers={"content-length": str(9 * 1024 * 1024), "content-type": "application/json"})
+    assert big.status_code == 413
