@@ -199,7 +199,7 @@ function Today({ user, checks, onSeeAll }: { user: User; checks: ChecksLoad; onS
                 icon="trending-up"
                 title={`Going around: ${SCAM_LABELS[near.scamType]}`}
                 subtitle={near.nearYou ? `${near.nearYou} reports near you this fortnight` : `${near.count} reports this fortnight`}
-                onPress={() => (nearGuide ? router.navigate(`/learn/${nearGuide.slug}`) : router.navigate('/learn'))}
+                onPress={() => (nearGuide ? router.push({ pathname: '/guide/[slug]', params: { slug: nearGuide.slug } }) : router.navigate('/learn'))}
               />
             )}
             {family.data && <FamilyRow user={user} family={family.data} />}
@@ -218,7 +218,7 @@ function TipOfTheDay({ guides }: { guides: Explainer[] }) {
   return (
     <Section title="Tip for today">
       <Pressable
-        onPress={() => router.navigate(`/learn/${guide.slug}`)}
+        onPress={() => router.push({ pathname: '/guide/[slug]', params: { slug: guide.slug } })}
         accessibilityRole="button"
         accessibilityLabel={`Tip for today: ${tip}. Read more about ${guide.title}`}
         style={({ pressed }) => [styles.tip, pressed && { transform: [{ scale: 0.98 }] }]}>

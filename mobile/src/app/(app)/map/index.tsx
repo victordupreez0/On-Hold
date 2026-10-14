@@ -121,7 +121,7 @@ function FocusCard({ area, explainers, onClose }: { area: AreaStat; explainers: 
           {area.count} {area.count === 1 ? 'report' : 'reports'} · mostly {lower(SCAM_LABELS[area.topType])}
         </T>
         {guide && (
-          <Pressable onPress={() => router.navigate(`/learn/${guide.slug}`)} accessibilityRole="link" style={styles.focusLink}>
+          <Pressable onPress={() => router.push({ pathname: '/map/guide/[slug]', params: { slug: guide.slug } })} accessibilityRole="link" style={styles.focusLink}>
             <T v="label" style={{ textDecorationLine: 'underline' }}>
               How to spot it
             </T>
