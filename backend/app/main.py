@@ -169,7 +169,12 @@ def create_check(body: CheckInput, user: User):
 
 @app.get("/checks")
 def list_my_checks(user: User):
-    return query(f"select {_CHECK_FIELDS} from checks where user_id = %(id)s order by created_at desc", {"id": user.id})
+    return query(
+        f"""select {_CHECK_FIELDS},
+                   (select count(*) from check_messages m where m.check_id = checks.id) as "messageCount"
+            from checks where user_id = %(id)s order by created_at desc""",
+        {"id": user.id},
+    )
 
 
 @app.get("/checks/{check_id}")
@@ -196,14 +201,21 @@ def alert_guardians(check_id: uuid.UUID, user: User):
     return [link["guardian_name"] for link in links]
 
 
-class ChatTurn(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=500)
-
-
 class AskInput(BaseModel):
     question: str = Field(min_length=1, max_length=500)
-    history: list[ChatTurn] = Field(default_factory=list, max_length=20)
+
+
+_MESSAGE_FIELDS = """m.role, m.content, m.created_at as "createdAt" """
+
+
+@app.get("/checks/{check_id}/messages")
+def list_check_messages(check_id: uuid.UUID, user: User):
+    """The follow-up chat on one check, oldest first. Owner-scoped through the join."""
+    return query(
+        f"""select {_MESSAGE_FIELDS} from check_messages m join checks c on c.id = m.check_id
+            where m.check_id = %(id)s and c.user_id = %(uid)s order by m.created_at""",
+        {"id": check_id, "uid": user.id},
+    )
 
 
 @app.post("/checks/{check_id}/messages")
@@ -211,10 +223,20 @@ def ask_about_check(check_id: uuid.UUID, body: AskInput, user: User):
     check = one(f"select {_CHECK_FIELDS} from checks where id = %(id)s and user_id = %(uid)s", {"id": check_id, "uid": user.id})
     check = _found(check, "We couldn’t find that check.")
     _check_rate_limit(user.id)
+    history = query(
+        "select role, content from check_messages where check_id = %(id)s order by created_at desc limit 20",
+        {"id": check_id},
+    )[::-1]
     try:
-        answer = ai.ask_about_check(check, [t.model_dump() for t in body.history], body.question)
+        answer = ai.ask_about_check(check, history, body.question)
     except ai.CheckFailed:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Couldn’t answer that right now.")
+    # One statement, so a question is never saved without its answer.
+    execute(
+        """insert into check_messages (check_id, role, content, created_at)
+           values (%(id)s, 'user', %(q)s, now()), (%(id)s, 'assistant', %(a)s, now() + interval '1 millisecond')""",
+        {"id": check_id, "q": body.question, "a": answer},
+    )
     return {"answer": answer}
 
 

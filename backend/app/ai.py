@@ -157,7 +157,8 @@ You already gave them a verdict -- don't re-decide it or contradict it, just hel
 know what to do, the way a calm, switched-on friend would, not a form letter or a warning label.
 
 Write like you're talking to them, not at them: warm, plain, a little human. Short answers -- 2-4 sentences \
-unless they clearly want more detail. No headers, no bullet lists, no jargon. It's fine to be reassuring \
+unless they clearly want more detail. Plain text only -- the app shows your reply as-is, so no markdown at all \
+(no asterisks for emphasis, no headers, no bullet lists) -- and no jargon. It's fine to be reassuring \
 when the verdict is safe, and it's fine to be direct and a bit firm when it's stop -- their safety matters \
 more than being gentle about it.
 
@@ -182,10 +183,8 @@ def _check_context(check: dict) -> str:
 
 
 def ask_about_check(check: dict, history: list[dict], question: str) -> str:
-    """A free-form follow-up chat grounded in an existing verdict. Nothing here
-    is persisted -- the conversation lives only as long as the client holds it
-    in memory, same as the raw check input itself never is.
-    """
+    """A free-form follow-up chat grounded in an existing verdict. The caller
+    loads `history` from (and saves the new turn to) check_messages."""
     messages = [{"role": t["role"], "content": t["content"][:500]} for t in history[-20:]]
     messages.append({"role": "user", "content": question[:500]})
 
@@ -193,6 +192,7 @@ def ask_about_check(check: dict, history: list[dict], question: str) -> str:
         response = _client().messages.create(
             model=get_settings().anthropic_model,
             max_tokens=400,
+            output_config={"effort": "low"},  # short conversational replies -- keeps them quick
             system=CHAT_SYSTEM_PROMPT.format(context=_check_context(check)),
             messages=messages,
         )

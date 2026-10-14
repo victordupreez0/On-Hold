@@ -119,7 +119,7 @@ supabase/
 | **Mid-call warning = call mode in Ask, plus auto-detect later** | Apps can't hear calls, and call-state detection needs a native dev build (Android first; Apple says CallKit's observer isn't meant for this). Call mode works everywhere today. `useOnCall()` is the hook for Phase 2. |
 | **Voice transcription still mocked** | Real Supabase Auth and the Claude check landed first. Transcription needs a separate speech-to-text provider (Claude doesn't take audio) — comparing `gpt-4o-mini-transcribe` against `whisper-1` is next. |
 | **The role switcher in Settings is gone** | It previewed every role without signing out, for the mock. Real roles now come from Supabase Auth (guardian at signup, admin granted by hand in the database) and can't be self-assigned. |
-| **The raw message/screenshot being checked is never stored** | Only the verdict is persisted. Scam texts routinely contain the victim's own account details — no reason for this app to be what leaks them. |
+| **The raw message/screenshot being checked is never stored** | Only the verdict (and any follow-up questions the person chooses to ask about it, so History can show them) is persisted. Scam texts routinely contain the victim's own account details — no reason for this app to be what leaks them. |
 
 ## Features: Must / Nice / Future
 
