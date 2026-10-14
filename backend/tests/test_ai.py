@@ -181,6 +181,7 @@ def test_test_error_is_ignored_without_demo_hooks(monkeypatch):
             return _stub_response(_verdict())
 
     monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
+    monkeypatch.setattr(ai.get_settings(), "demo_hooks", False)  # a local .env may turn it on
     assert ai.run_check("message", "SMS with test-error in it", None)["verdict"] == "stop"
 
 
