@@ -103,6 +103,11 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
+/** Removes the account and everything tied to it (checks, chats, reports, family links). */
+export async function deleteMe() {
+  await del('/me');
+}
+
 export async function updateProfile(patchBody: Partial<Pick<User, 'name' | 'phone' | 'simpleMode' | 'suburb' | 'role'>>) {
   return patch<User>('/me', patchBody);
 }
@@ -125,6 +130,11 @@ export async function getCheck(id: string) {
 
 export async function listMyChecks() {
   return get<CheckResult[]>('/checks');
+}
+
+/** Deletes a check and its follow-up chat. */
+export async function deleteCheck(id: string) {
+  await del(`/checks/${id}`);
 }
 
 /** The saved follow-up chat on a check, oldest first. */
