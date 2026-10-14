@@ -128,24 +128,42 @@ function Today({ user, checks, onSeeAll }: { user: User; checks?: CheckResult[];
   const family = useLoad(api.getFamily);
   const circulating = useLoad(api.listCirculating);
   const pending = useLoad(() => (user.role === 'admin' ? api.listPendingReports() : Promise.resolve([])), user.role);
+  // A guardian's whole reason to open the app: someone they look out for just got a warning.
+  const alerts = useLoad(() => (user.role === 'guardian' ? api.listAlerts() : Promise.resolve([])), user.role);
   const explainers = useLoad(api.listExplainers);
 
   const near = circulating.data?.[0];
   const nearGuide = near && explainers.data?.find((e) => e.scamType === near.scamType);
   const recent = checks?.slice(0, 3);
+  const fresh = alerts.data?.filter((a) => !a.seen).slice(0, 3) ?? [];
 
   return (
     <>
-      {!!pending.data?.length && (
-        <ListGroup>
-          <ListRow
-            icon="shield"
-            iconBg={colors.highlighter}
-            title={`${pending.data.length} ${pending.data.length === 1 ? 'report' : 'reports'} to review`}
-            subtitle="Approve real scams so they warn people nearby"
-            onPress={() => router.push('/admin')}
-          />
-        </ListGroup>
+      {(!!pending.data?.length || fresh.length > 0) && (
+        <Section title="Needs you">
+          <ListGroup>
+            {fresh.map((a) => (
+              <ListRow
+                key={a.id}
+                icon={a.type === 'stop_verdict' ? 'octagon' : 'bell'}
+                iconBg={a.type === 'stop_verdict' ? colors.stop : colors.highlighter}
+                iconColor={a.type === 'stop_verdict' ? colors.white : colors.ink}
+                title={a.personName}
+                subtitle={`${a.detail} · ${timeAgo(a.createdAt)}`}
+                onPress={() => router.navigate('/family')}
+              />
+            ))}
+            {!!pending.data?.length && (
+              <ListRow
+                icon="shield"
+                iconBg={colors.highlighter}
+                title={`${pending.data.length} ${pending.data.length === 1 ? 'report' : 'reports'} to review`}
+                subtitle="Approve real scams so they warn people nearby"
+                onPress={() => router.push('/admin')}
+              />
+            )}
+          </ListGroup>
+        </Section>
       )}
 
       <Section title="Recent" action={!!checks && checks.length > 3 && <TextLink label="See all" onPress={onSeeAll} />}>
