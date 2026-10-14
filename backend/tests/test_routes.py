@@ -142,26 +142,28 @@ def test_cant_change_own_role(monkeypatch):
     assert res.status_code == 400
 
 
+def _admins_locked(monkeypatch, admin_ids):
+    """Fakes db.transaction(): the FOR UPDATE select returns these admin ids."""
+    cm, cur = _fake_cursor_cm({**_USER_ROW, "role": "guardian"})
+    cur.fetchall.return_value = [{"id": i} for i in admin_ids]
+    monkeypatch.setattr(main, "transaction", lambda: cm)
+    return cur
+
+
 def test_cant_demote_the_last_admin(monkeypatch):
     other_admin = _uuid.uuid4()
     app.dependency_overrides[current_user] = lambda: _admin()
-    monkeypatch.setattr(main, "one", lambda sql, params=None: {"role": "admin"} if "select role" in sql else {"n": 0})
+    cur = _admins_locked(monkeypatch, [other_admin])
     res = client.patch(f"/admin/users/{other_admin}", json={"role": "guardian"})
     assert res.status_code == 400
+    assert "for update" in cur.execute.call_args_list[0].args[0]  # the count is taken under a lock
+    assert not any("update profiles" in c.args[0] for c in cur.execute.call_args_list)
 
 
 def test_can_demote_an_admin_when_another_remains(monkeypatch):
     other_admin = _uuid.uuid4()
     app.dependency_overrides[current_user] = lambda: _admin()
-
-    def fake_one(sql, params=None):
-        if "select role" in sql:
-            return {"role": "admin"}
-        if "count(*)" in sql:
-            return {"n": 1}  # one other admin remains
-        return {**_USER_ROW, "role": "guardian"}
-
-    monkeypatch.setattr(main, "one", fake_one)
+    _admins_locked(monkeypatch, [other_admin, _uuid.uuid4()])  # one other admin remains
     res = client.patch(f"/admin/users/{other_admin}", json={"role": "guardian"})
     assert res.status_code == 200
 

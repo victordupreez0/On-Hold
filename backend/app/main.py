@@ -3,8 +3,8 @@ error messages, same business rules -- so the frontend's api.ts wrapper can
 become a thin fetch layer without touching any screen.
 """
 
-import random
 import re
+import secrets
 import string
 import uuid
 from contextlib import asynccontextmanager
@@ -388,19 +388,24 @@ def get_family(user: User):
 
 
 class InviteInput(BaseModel):
-    name: str
-    phone: str
+    name: str = Field(min_length=1, max_length=100)
+    phone: str = Field(min_length=1, max_length=30)
 
 
 @app.post("/invites")
 def create_invite(body: InviteInput, user: User):
-    code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    execute(
-        """insert into guardian_links (guardian_id, protected_name, invited_phone, code)
-           values (%(guardianId)s, %(name)s, %(phone)s, %(code)s)""",
-        {"guardianId": user.id, "name": body.name.strip(), "phone": re.sub(r"\s", "", body.phone), "code": code},
-    )
-    return {"code": code}
+    for _ in range(3):  # a 6-char code can collide; just draw again
+        code = "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+        try:
+            execute(
+                """insert into guardian_links (guardian_id, protected_name, invited_phone, code)
+                   values (%(guardianId)s, %(name)s, %(phone)s, %(code)s)""",
+                {"guardianId": user.id, "name": body.name.strip(), "phone": re.sub(r"\s", "", body.phone), "code": code},
+            )
+            return {"code": code}
+        except UniqueViolation:
+            continue
+    raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Couldn’t make an invite right now. Try again.")
 
 
 @app.get("/invites/{code}")
@@ -431,13 +436,17 @@ def accept_invite(code: str, body: ShareInput, user: User):
     if dup:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{link['guardianName']} is already looking out for you.")
 
-    row = one(
-        f"""update guardian_links l set protected_id = %(uid)s, protected_name = %(name)s, status = 'active',
-            share_calls = %(shareCalls)s, share_verdicts = %(shareVerdicts)s
-            {_LINK_UPDATE_FROM} and l.id = %(id)s
-            returning {_LINK_FIELDS}""",
-        {"uid": user.id, "name": user.row["name"], "shareCalls": body.shareCalls, "shareVerdicts": body.shareVerdicts, "id": link["id"]},
-    )
+    try:
+        row = one(
+            f"""update guardian_links l set protected_id = %(uid)s, protected_name = %(name)s, status = 'active',
+                share_calls = %(shareCalls)s, share_verdicts = %(shareVerdicts)s
+                {_LINK_UPDATE_FROM} and l.id = %(id)s and l.status = 'pending'
+                returning {_LINK_FIELDS}""",
+            {"uid": user.id, "name": user.row["name"], "shareCalls": body.shareCalls, "shareVerdicts": body.shareVerdicts, "id": link["id"]},
+        )
+    except UniqueViolation:  # accepted another code from the same guardian a moment ago
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"{link['guardianName']} is already looking out for you.")
+    row = _found(row, "This invite has expired or was already used.")  # someone else accepted it, or it was cancelled
     _push_alert(link["id"], user.row["name"], "invite_accepted", None, "Accepted your invite")
     return row
 
@@ -648,9 +657,14 @@ class RoleInput(BaseModel):
 def update_user_role(user_id: uuid.UUID, body: RoleInput, admin: Admin):
     if user_id == admin.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can’t change your own role.")
-    if body.role != "admin" and _is_last_admin(user_id):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Can’t remove the last admin.")
-    row = one(f"update profiles set role = %(role)s where id = %(id)s returning {_USER_FIELDS}", {"role": body.role, "id": user_id})
+    with transaction() as cur:
+        if body.role != "admin":
+            # FOR UPDATE makes a concurrent demotion wait and then re-count, so the two can't both pass.
+            cur.execute("select id from profiles where role = 'admin' for update")
+            if {r["id"] for r in cur.fetchall()} == {user_id}:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Can’t remove the last admin.")
+        cur.execute(f"update profiles set role = %(role)s where id = %(id)s returning {_USER_FIELDS}", {"role": body.role, "id": user_id})
+        row = cur.fetchone()
     return _found(row, "We couldn’t find that user.")
 
 
