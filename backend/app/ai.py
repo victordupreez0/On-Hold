@@ -9,20 +9,23 @@ from functools import lru_cache
 from typing import Literal
 
 import anthropic
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from .config import get_settings
 
 
 @lru_cache
 def _client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
+    # The SDK default (600s, 2 retries) would keep working long after the app gave up at
+    # 45s -- then save a check and send guardian alerts nobody is waiting for, twice if they retry.
+    return anthropic.Anthropic(api_key=get_settings().anthropic_api_key, timeout=20.0, max_retries=1)
 
 GENERIC_SAY = "I don't do this over the phone. I'll phone you back on an official number. Goodbye."
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
-# Lets the demo trigger the failure path on demand without depending on the
-# real API being down. Checked before any Claude call, so it costs nothing.
+# Lets a demo trigger the failure path on demand without depending on the real API
+# being down. Off unless DEMO_HOOKS is set -- otherwise a scammer could add the phrase
+# to every message and turn every Stop into "checker unavailable".
 _TEST_ERROR = re.compile(r"test-error", re.IGNORECASE)
 
 ScamTypeLiteral = Literal[
@@ -65,13 +68,16 @@ Read any text visible in it the same way."""
 
 
 class ScamVerdict(BaseModel):
+    # No upper bounds here on purpose: structured output can't enforce maxLength/maxItems/maximum
+    # (the SDK sends them as hints, then re-validates), so a 4th reason would fail the whole check.
+    # run_check clips to the limits instead.
     verdict: Literal["stop", "wait", "safe"]
-    confidence: float = Field(ge=0, le=1)
+    confidence: float
     scam_type: ScamTypeLiteral | None = None
-    headline: str = Field(min_length=1, max_length=120)
-    reasons: list[str] = Field(min_length=1, max_length=3)
-    next_steps: list[str] = Field(min_length=1, max_length=3)
-    say_this: str | None = Field(default=None, max_length=300)
+    headline: str = Field(min_length=1)
+    reasons: list[str] = Field(min_length=1)
+    next_steps: list[str] = Field(min_length=1)
+    say_this: str | None = None
     is_call: bool
 
 
@@ -94,7 +100,7 @@ def _image_block(data: str) -> dict:
     if len(data) * 3 // 4 > MAX_IMAGE_BYTES:
         raise BadImage("That picture is too big. Try a screenshot instead of a photo.")
     try:
-        head = base64.b64decode(data[:16])
+        head = base64.b64decode(data, validate=True)[:16]  # whole string: a corrupt tail would only fail at Claude
     except (binascii.Error, ValueError):
         raise BadImage("We couldn’t read that picture. Try a different screenshot.")
     media_type = next((t for magic, t in _IMAGE_MAGIC if head.startswith(bytes.fromhex(magic))), None)
@@ -107,7 +113,7 @@ def _image_block(data: str) -> dict:
 
 def run_check(kind: Literal["message", "call"], text: str | None, image: dict | None) -> dict:
     text = (text or "").strip()
-    if _TEST_ERROR.search(text):
+    if get_settings().demo_hooks and _TEST_ERROR.search(text):
         raise CheckFailed("forced failure for the demo (test-error)")
     if not text and not image:
         raise CheckFailed("Nothing to check.")
@@ -128,26 +134,26 @@ def run_check(kind: Literal["message", "call"], text: str | None, image: dict | 
             messages=[{"role": "user", "content": content}],
             output_format=ScamVerdict,
         )
-    except anthropic.APIError as e:
-        raise CheckFailed(f"Claude API error: {e}") from e
+    except (anthropic.APIError, ValidationError) as e:
+        raise CheckFailed(f"Claude API error or off-schema output: {e}") from e
 
     parsed = response.parsed_output
-    if parsed is None:
-        raise CheckFailed("Claude returned no usable output.")
+    if parsed is None or response.stop_reason in ("refusal", "max_tokens"):
+        raise CheckFailed(f"Claude returned no usable output (stop_reason={response.stop_reason}).")
 
     final_kind = "call" if (kind == "call" or parsed.is_call) else "message"
     say_this = None
     if final_kind == "call" and parsed.verdict != "safe":
-        say_this = parsed.say_this.strip() if parsed.say_this and parsed.say_this.strip() else GENERIC_SAY
+        say_this = parsed.say_this.strip()[:300] if parsed.say_this and parsed.say_this.strip() else GENERIC_SAY
 
     return {
         "kind": final_kind,
         "verdict": parsed.verdict,
-        "confidence": parsed.confidence,
+        "confidence": min(max(parsed.confidence, 0.0), 1.0),
         "scamType": parsed.scam_type,
-        "headline": parsed.headline,
-        "reasons": parsed.reasons,
-        "nextSteps": parsed.next_steps,
+        "headline": parsed.headline.strip()[:120],
+        "reasons": parsed.reasons[:3],
+        "nextSteps": parsed.next_steps[:3],
         "sayThis": say_this,
     }
 
@@ -200,9 +206,14 @@ def ask_about_check(check: dict, history: list[dict], question: str) -> str:
         raise CheckFailed(f"Claude API error: {e}") from e
 
     text = next((b.text for b in response.content if b.type == "text"), None)
-    if not text:
-        raise CheckFailed("Claude returned no usable output.")
-    return text.strip()
+    if not text or response.stop_reason == "refusal":
+        raise CheckFailed(f"Claude returned no usable output (stop_reason={response.stop_reason}).")
+    text = text.strip()
+    if response.stop_reason == "max_tokens":
+        # Cut off mid-thought -- keep up to the last full sentence rather than save a dangling half.
+        end = max(text.rfind(p) for p in ".!?")
+        text = text[: end + 1] if end > 0 else text
+    return text
 
 
 def transcribe(_audio_uri: str) -> str:

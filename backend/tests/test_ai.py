@@ -5,8 +5,8 @@ import pytest
 from app import ai
 
 
-def _stub_response(parsed):
-    return SimpleNamespace(parsed_output=parsed)
+def _stub_response(parsed, stop_reason="end_turn"):
+    return SimpleNamespace(parsed_output=parsed, stop_reason=stop_reason)
 
 
 def test_test_error_skips_the_api_call(monkeypatch):
@@ -14,6 +14,7 @@ def test_test_error_skips_the_api_call(monkeypatch):
         raise AssertionError("should not call Claude")
 
     monkeypatch.setattr(ai, "_client", boom)
+    monkeypatch.setattr(ai.get_settings(), "demo_hooks", True)
     with pytest.raises(ai.CheckFailed):
         ai.run_check("message", "please say test-error here", None)
 
@@ -87,7 +88,7 @@ def test_ask_about_check_answers_from_verdict_context(monkeypatch):
     class FakeMessages:
         def create(self, **kwargs):
             captured.update(kwargs)
-            return SimpleNamespace(content=[SimpleNamespace(type="text", text="  You're safe to hang up. ")])
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text="  You're safe to hang up. ")], stop_reason="end_turn")
 
     monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
     answer = ai.ask_about_check(check, [{"role": "user", "content": "earlier question"}, {"role": "assistant", "content": "earlier answer"}], "should I block the number?")
@@ -100,7 +101,7 @@ def test_ask_about_check_answers_from_verdict_context(monkeypatch):
 def test_ask_about_check_no_text_raises(monkeypatch):
     class FakeMessages:
         def create(self, **kwargs):
-            return SimpleNamespace(content=[])
+            return SimpleNamespace(content=[], stop_reason="end_turn")
 
     monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
     with pytest.raises(ai.CheckFailed):
@@ -143,3 +144,51 @@ def test_image_type_is_read_from_the_bytes_not_the_client():
         ai._image_block(heic)
     with pytest.raises(ai.BadImage):
         ai._image_block("A" * (ai.MAX_IMAGE_BYTES * 2))
+
+
+def _verdict(**overrides):
+    fields = dict(verdict="stop", confidence=0.9, scam_type="bank", headline="Fake bank call", reasons=["r"], next_steps=["n"], say_this=None, is_call=False)
+    return ai.ScamVerdict(**{**fields, **overrides})
+
+
+def test_over_long_output_is_clipped_not_failed(monkeypatch):
+    """Structured output can't enforce max lengths, so a 4th reason must not 500 the whole check."""
+    long = _verdict(confidence=1.3, headline="h" * 200, reasons=list("abcd"), next_steps=list("wxyz"))
+
+    class FakeMessages:
+        def parse(self, **kwargs):
+            return _stub_response(long)
+
+    monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
+    result = ai.run_check("message", "some text", None)
+    assert (result["confidence"], len(result["headline"]), result["reasons"], result["nextSteps"]) == (1.0, 120, list("abc"), list("wxy"))
+
+
+@pytest.mark.parametrize("stop_reason", ["refusal", "max_tokens"])
+def test_refused_or_truncated_check_fails_cleanly(monkeypatch, stop_reason):
+    class FakeMessages:
+        def parse(self, **kwargs):
+            return _stub_response(_verdict(), stop_reason=stop_reason)
+
+    monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
+    with pytest.raises(ai.CheckFailed):
+        ai.run_check("message", "some text", None)
+
+
+def test_test_error_is_ignored_without_demo_hooks(monkeypatch):
+    class FakeMessages:
+        def parse(self, **kwargs):
+            return _stub_response(_verdict())
+
+    monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
+    assert ai.run_check("message", "SMS with test-error in it", None)["verdict"] == "stop"
+
+
+def test_cut_off_chat_reply_keeps_whole_sentences(monkeypatch):
+    class FakeMessages:
+        def create(self, **kwargs):
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text="Hang up. Then phone your bank on the number on your card and")], stop_reason="max_tokens")
+
+    monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
+    check = {"verdict": "stop", "headline": "h", "reasons": ["r"], "nextSteps": ["n"], "kind": "call", "scamType": "bank"}
+    assert ai.ask_about_check(check, [], "what now?") == "Hang up."
