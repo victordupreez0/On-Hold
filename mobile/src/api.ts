@@ -55,7 +55,12 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
   if (res.status === 204) return undefined as T;
 
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(body?.detail ?? 'Something went wrong. Please try again.', res.status);
+  if (!res.ok) {
+    // FastAPI's own validation errors (422) carry a list of field problems, not a sentence -- it rendered as "[object Object]".
+    const detail = body?.detail;
+    const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? 'Some of that isn’t quite right. Check what you entered and try again.' : 'Something went wrong. Please try again.';
+    throw new ApiError(message, res.status);
+  }
   return body as T;
 }
 

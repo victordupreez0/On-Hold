@@ -131,6 +131,7 @@ export default function Ask() {
               setError(null);
             }}
             multiline
+            maxLength={4000}
             placeholder={onCallMode ? 'What are they saying? E.g. “He says he’s from my bank and needs the code they sent me”' : 'Paste or type the message here'}
             placeholderTextColor="#8A8A84"
             accessibilityLabel={onCallMode ? 'What is the caller saying?' : 'Message to check'}
