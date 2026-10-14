@@ -2,6 +2,8 @@
 rules are documented in backend/docs/ai.md -- read that alongside this file.
 """
 
+import base64
+import binascii
 import re
 from functools import lru_cache
 from typing import Literal
@@ -77,6 +79,32 @@ class CheckFailed(Exception):
     """The checker couldn't produce a usable verdict -- surfaced as a 503."""
 
 
+class BadImage(CheckFailed):
+    """The picture itself is the problem (format/size) -- the message says what to do, surfaced as a 400."""
+
+
+_IMAGE_MAGIC = [("ffd8ff", "image/jpeg"), ("89504e47", "image/png"), ("47494638", "image/gif")]
+
+
+def _image_block(data: str) -> dict:
+    """The picker's reported type can't be trusted: iOS hands over JPEG base64 for every
+    pick but reports the original file's type (a PNG screenshot says image/png), and
+    Claude rejects any mismatch. So read the real type from the bytes instead."""
+    data = data.split(",", 1)[1] if data.startswith("data:") else data  # tolerate a data: URI
+    if len(data) * 3 // 4 > MAX_IMAGE_BYTES:
+        raise BadImage("That picture is too big. Try a screenshot instead of a photo.")
+    try:
+        head = base64.b64decode(data[:16])
+    except (binascii.Error, ValueError):
+        raise BadImage("We couldn’t read that picture. Try a different screenshot.")
+    media_type = next((t for magic, t in _IMAGE_MAGIC if head.startswith(bytes.fromhex(magic))), None)
+    if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
+        media_type = "image/webp"
+    if media_type is None:  # e.g. HEIC/TIFF straight off a camera roll on the web
+        raise BadImage("We can’t read that kind of picture. Take a screenshot of it and share that instead.")
+    return {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": data}}
+
+
 def run_check(kind: Literal["message", "call"], text: str | None, image: dict | None) -> dict:
     text = (text or "").strip()
     if _TEST_ERROR.search(text):
@@ -84,14 +112,7 @@ def run_check(kind: Literal["message", "call"], text: str | None, image: dict | 
     if not text and not image:
         raise CheckFailed("Nothing to check.")
 
-    content: list[dict] = []
-    if image:
-        data = image.get("base64", "")
-        if len(data) * 3 // 4 > MAX_IMAGE_BYTES:
-            raise CheckFailed("That screenshot is too large.")
-        content.append(
-            {"type": "image", "source": {"type": "base64", "media_type": image["mediaType"], "data": data}}
-        )
+    content: list[dict] = [_image_block(image.get("base64", ""))] if image else []
     content.append(
         {
             "type": "text",

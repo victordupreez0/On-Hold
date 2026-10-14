@@ -125,7 +125,7 @@ _CHECK_FIELDS = """id, user_id as "userId", kind, verdict, confidence, scam_type
 
 class ImageInput(BaseModel):
     base64: str
-    mediaType: str
+    mediaType: str | None = None  # ignored: the real type is read from the bytes (see ai._image_block)
 
 
 class CheckInput(BaseModel):
@@ -140,6 +140,8 @@ def create_check(body: CheckInput, user: User):
 
     try:
         result = ai.run_check(body.kind, body.text, body.image.model_dump() if body.image else None)
+    except ai.BadImage as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     except ai.CheckFailed:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "The checker is unavailable right now.")
 
