@@ -35,14 +35,17 @@ export default function Settings() {
         <T color={colors.inkSoft}>{user.email}</T>
       </View>
 
-      <Card>
-        <Toggle
-          label="Simple mode"
-          detail="One big button to check something, and one to call family."
-          value={user.simpleMode}
-          onChange={(simpleMode) => save({ simpleMode })}
-        />
-      </Card>
+      {/* Simple mode hides alerts and the tab bar -- it's for the person being protected. Still shown if already on, so it can be turned off. */}
+      {(user.role === 'protected' || user.simpleMode) && (
+        <Card>
+          <Toggle
+            label="Simple mode"
+            detail="One big button to check something, and one to call family."
+            value={user.simpleMode}
+            onChange={(simpleMode) => save({ simpleMode })}
+          />
+        </Card>
+      )}
 
       <Card>
         <T v="label">Your details</T>

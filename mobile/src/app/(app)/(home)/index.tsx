@@ -291,10 +291,11 @@ function FamilyRow({ user, family }: { user: User; family: Family }) {
 /** Simple mode: one button to check, one to call family (pitch: "One button for Ouma"). */
 function SimpleHome({ user }: { user: User }) {
   const family = useLoad(api.getFamily);
-  const helper = family.data?.lookedAfterBy.find((l) => l.status === 'active' && l.guardianPhone);
+  const linked = family.data?.lookedAfterBy.filter((l) => l.status === 'active') ?? [];
+  const helper = linked.find((l) => l.guardianPhone);
 
   return (
-    <Screen edges={['top', 'bottom']}>
+    <Screen>
       <View style={styles.simpleTop}>
         <T v="title">Hi {user.name}</T>
         <Pressable onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Settings" style={styles.settingsButton}>
@@ -329,6 +330,18 @@ function SimpleHome({ user }: { user: User }) {
             Call {helper.guardianName}
           </T>
         </Pressable>
+      )}
+      {/* Simple mode has no tab bar, so this is the only way in to linking family. */}
+      {family.data && !linked.length && (
+        <Pressable onPress={() => router.push('/family/accept')} accessibilityRole="button" style={styles.simpleButton}>
+          <Feather name="key" size={26} color={colors.ink} />
+          <T v="heading">I have a family invite code</T>
+        </Pressable>
+      )}
+      {!!linked.length && !helper && (
+        <T v="small" color={colors.inkSoft} style={{ textAlign: 'center' }}>
+          Ask {linked[0].guardianName} to add their phone number in On Hold, and a button to call them will appear here.
+        </T>
       )}
     </Screen>
   );

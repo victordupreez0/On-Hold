@@ -12,6 +12,7 @@ import {
   ErrorState,
   Feather,
   ListGroup,
+  Header,
   ListRow,
   Loading,
   PageTitle,
@@ -175,6 +176,7 @@ function Person({ link, latest, onChanged }: { link: GuardianLink; latest?: Aler
 // ---------- Protected: who looks out for me, and what they can see ----------
 
 function ProtectedView() {
+  const user = useUser();
   const family = useLoad(api.getFamily);
   const toast = useToast();
 
@@ -208,6 +210,8 @@ function ProtectedView() {
 
   return (
     <Screen>
+      {/* Simple mode reaches Family only from Home, with no tab bar to get back. */}
+      {user.simpleMode && <Header />}
       <PageTitle title="Family" subtitle="Someone you trust can get a heads-up if something looks like a scam." />
 
       {family.error ? (
