@@ -76,16 +76,15 @@ export async function getMe() {
   return get<User>('/me');
 }
 
-export async function signUp(input: { name: string; email: string; password: string; role: Role }) {
+/** Resolves to null when the project wants the email confirmed first (no session until they tap the link). */
+export async function signUp(input: { name: string; email: string; password: string; role: Role }): Promise<User | null> {
   const { data, error } = await supabase.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,
     options: { data: { name: input.name.trim(), role: input.role } },
   });
   if (error) throw new Error(error.message);
-  // If the project requires email confirmation, sign-up succeeds but there's no
-  // session yet -- say so plainly instead of a confusing "please sign in again".
-  if (!data.session) throw new Error('Check your email to confirm your account, then sign in.');
+  if (!data.session) return null;
   return getMe();
 }
 
