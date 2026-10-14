@@ -232,7 +232,7 @@ function TipOfTheDay({ guides }: { guides: Explainer[] }) {
       <Pressable
         onPress={() => router.push({ pathname: '/guide/[slug]', params: { slug: guide.slug } })}
         accessibilityRole="button"
-        accessibilityLabel={`Tip for today: ${tip}. Read more about ${guide.title}`}
+        accessibilityLabel={`Tip for today: ${tip.replace(/\.$/, '')}. Read more about ${guide.title}`}
         style={({ pressed }) => [styles.tip, pressed && { transform: [{ scale: 0.98 }] }]}>
         <View style={styles.tipIcon}>
           <Feather name="sun" size={20} color={colors.ink} />
