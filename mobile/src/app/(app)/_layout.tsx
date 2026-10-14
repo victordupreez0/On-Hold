@@ -29,7 +29,8 @@ export default function AppTabs() {
 function TabBar({ state, navigation, insets }: BottomTabBarProps) {
   // useSession, not useUser: the bar can render once more while signing out.
   const { user } = useSession();
-  if (user?.simpleMode) return null;
+  // No bar in simple mode, but keep its bottom inset so footers don't sit on the home indicator.
+  if (user?.simpleMode) return <View style={{ height: insets.bottom, backgroundColor: colors.white }} />;
 
   return (
     <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, space.sm) }]}>
@@ -68,7 +69,7 @@ function TabBar({ state, navigation, insets }: BottomTabBarProps) {
               <T
                 v="small"
                 color={focused ? colors.ink : colors.inkSoft}
-                style={{ fontSize: 13, lineHeight: 16, fontFamily: focused ? font.semibold : font.regular }}>
+                style={{ fontSize: 14, lineHeight: 17, fontFamily: focused ? font.semibold : font.regular }}>
                 {meta.label}
               </T>
             </Pressable>

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
+import { confirm } from '@/confirm';
 import { Logo } from '@/components/Logo';
 import { Button, ErrorState, Feather, Header, Loading, Screen, Section, T } from '@/components/ui';
 import { VerdictBanner } from '@/components/VerdictBanner';
@@ -37,6 +38,7 @@ function Result({ check }: { check: Check }) {
   const toast = useToast();
   const fromHistory = usePathname().startsWith('/history');
   const [sending, setSending] = useState(false);
+  const [told, setTold] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const risky = check.verdict !== 'safe';
 
@@ -44,6 +46,7 @@ function Result({ check }: { check: Check }) {
     setSending(true);
     try {
       const names = await api.alertGuardians(check.id);
+      setTold(true); // one tap, one alert -- a second tap used to send it again
       toast(`Sent to ${names.join(' and ')}. They’ll get in touch.`);
     } catch (e) {
       toast((e as Error).message);
@@ -56,6 +59,19 @@ function Result({ check }: { check: Check }) {
     // Leave the stack fresh for next time, then go home.
     if (router.canDismiss()) router.dismissAll();
     router.navigate('/');
+  };
+
+  const remove = async () => {
+    const ok = await confirm('Delete this check?', 'It and any questions you asked about it will be gone for good.', 'Delete', true);
+    if (!ok) return;
+    try {
+      await api.deleteCheck(check.id);
+      toast('Deleted.');
+      if (router.canGoBack()) router.back();
+      else router.navigate('/');
+    } catch (e) {
+      toast((e as Error).message);
+    }
   };
 
   const report = () => {
@@ -123,7 +139,15 @@ function Result({ check }: { check: Check }) {
         {risky && (
           <View style={{ flexDirection: 'row', gap: space.sm + 2 }}>
             {user.role !== 'guardian' && (
-              <Button label="Tell family" icon="users" variant="ghost" loading={sending} onPress={tellFamily} style={{ flex: 1, paddingHorizontal: space.sm }} />
+              <Button
+                label={told ? 'Family told' : 'Tell family'}
+                icon={told ? 'check' : 'users'}
+                variant="ghost"
+                loading={sending}
+                disabled={told}
+                onPress={tellFamily}
+                style={{ flex: 1, paddingHorizontal: space.sm }}
+              />
             )}
             <Button label="Report it" icon="flag" variant="ghost" accessibilityHint="Warn people in your area" style={{ flex: 1, paddingHorizontal: space.sm }} onPress={report} />
           </View>
@@ -133,6 +157,11 @@ function Result({ check }: { check: Check }) {
       <T v="small" color={colors.inkSoft} style={{ textAlign: 'center' }}>
         On Hold can make mistakes. If something still feels wrong, trust that feeling.
       </T>
+      <Pressable onPress={remove} accessibilityRole="button" style={styles.delete}>
+        <T v="small" color={colors.inkSoft} style={{ textDecorationLine: 'underline' }}>
+          Delete this check
+        </T>
+      </Pressable>
     </>
   );
 }
@@ -189,5 +218,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     backgroundColor: colors.grey,
   },
+  delete: { minHeight: minTouch, alignItems: 'center', justifyContent: 'center', marginTop: -space.md },
   chatAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.highlighter, alignItems: 'center', justifyContent: 'center' },
 });

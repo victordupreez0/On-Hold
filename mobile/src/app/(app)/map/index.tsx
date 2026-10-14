@@ -7,13 +7,13 @@ import { ScamMap } from '@/components/ScamMap';
 import { Button, Chip, ErrorState, Feather, Loading, PageTitle, Screen, Section, T } from '@/components/ui';
 import { SCAM_LABELS } from '@/fixtures';
 import { useUser } from '@/session';
-import { colors, heat, heatRgba, radius, space } from '@/theme';
+import { colors, heat, heatRgba, minTouch, radius, space } from '@/theme';
 import type { AreaStat, Explainer, ScamType } from '@/types';
 import { useLoad } from '@/useLoad';
 
 const SA = { lat: -29.0, lng: 25.0 };
 const lower = (s: string) => (/^[A-Z]{2}/.test(s) ? s : s[0].toLowerCase() + s.slice(1));
-const TYPES: ScamType[] = ['aarto', 'bank', 'sassa', 'family', 'courier', 'jobs', 'debicheck', 'investment'];
+const TYPES: ScamType[] = ['aarto', 'bank', 'sassa', 'sars', 'family', 'courier', 'jobs', 'debicheck', 'investment'];
 
 export default function ScamMapScreen() {
   const user = useUser();
@@ -40,7 +40,11 @@ export default function ScamMapScreen() {
       </ScrollView>
 
       <View>
-        <ScamMap areas={areas.data ?? []} selected={selected} onSelect={setSelected} center={center} />
+        {suburbs.data || suburbs.error ? (
+          <ScamMap key={home?.name ?? 'sa'} areas={areas.data ?? []} selected={selected} onSelect={setSelected} center={center} />
+        ) : (
+          <View style={styles.mapPlaceholder} />
+        )}
         <View style={styles.legend} accessibilityLabel="Legend: lighter means fewer reports, deeper orange means more">
           <T v="small" style={styles.legendText}>
             Fewer
@@ -121,7 +125,7 @@ function FocusCard({ area, explainers, onClose }: { area: AreaStat; explainers: 
           {area.count} {area.count === 1 ? 'report' : 'reports'} · mostly {lower(SCAM_LABELS[area.topType])}
         </T>
         {guide && (
-          <Pressable onPress={() => router.navigate(`/learn/${guide.slug}`)} accessibilityRole="link" style={styles.focusLink}>
+          <Pressable onPress={() => router.push({ pathname: '/map/guide/[slug]', params: { slug: guide.slug } })} accessibilityRole="link" style={styles.focusLink}>
             <T v="label" style={{ textDecorationLine: 'underline' }}>
               How to spot it
             </T>
@@ -151,7 +155,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     zIndex: 1000,
   },
-  legendText: { fontSize: 13, lineHeight: 16 },
+  legendText: { fontSize: 14, lineHeight: 17 },
+  mapPlaceholder: { height: 320, borderRadius: radius.lg, backgroundColor: colors.grey },
   ramp: { width: 72, height: 8, borderRadius: 4, overflow: 'hidden', flexDirection: 'row' },
   list: { gap: space.xs },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: space.sm + 4, paddingHorizontal: space.sm, borderRadius: radius.md },
@@ -169,6 +174,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.highlighter,
     marginTop: -space.sm,
   },
-  focusLink: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 40, alignSelf: 'flex-start' },
-  close: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  focusLink: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: minTouch, alignSelf: 'flex-start' },
+  close: { width: minTouch, height: minTouch, borderRadius: minTouch / 2, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
 });

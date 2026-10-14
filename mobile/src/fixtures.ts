@@ -9,7 +9,7 @@ export const SCAM_LABELS: Record<ScamType, string> = {
   sassa: 'SASSA grant scam',
   sars: 'Fake SARS refund',
   aarto: 'Fake traffic fine',
-  family: '"Hi Mom, new number"',
+  family: '“Hi Ma, new number”',
   courier: 'Fake delivery fee',
   jobs: 'WhatsApp job scam',
   debicheck: 'DebiCheck trick',

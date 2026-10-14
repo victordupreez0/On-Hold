@@ -55,7 +55,12 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
   if (res.status === 204) return undefined as T;
 
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(body?.detail ?? 'Something went wrong. Please try again.', res.status);
+  if (!res.ok) {
+    // FastAPI's own validation errors (422) carry a list of field problems, not a sentence -- it rendered as "[object Object]".
+    const detail = body?.detail;
+    const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? 'Some of that isn’t quite right. Check what you entered and try again.' : 'Something went wrong. Please try again.';
+    throw new ApiError(message, res.status);
+  }
   return body as T;
 }
 
@@ -71,16 +76,15 @@ export async function getMe() {
   return get<User>('/me');
 }
 
-export async function signUp(input: { name: string; email: string; password: string; role: Role }) {
+/** Resolves to null when the project wants the email confirmed first (no session until they tap the link). */
+export async function signUp(input: { name: string; email: string; password: string; role: Role }): Promise<User | null> {
   const { data, error } = await supabase.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,
     options: { data: { name: input.name.trim(), role: input.role } },
   });
   if (error) throw new Error(error.message);
-  // If the project requires email confirmation, sign-up succeeds but there's no
-  // session yet -- say so plainly instead of a confusing "please sign in again".
-  if (!data.session) throw new Error('Check your email to confirm your account, then sign in.');
+  if (!data.session) return null;
   return getMe();
 }
 
@@ -96,6 +100,11 @@ export async function signIn(input: { email: string; password: string }) {
 
 export async function signOut() {
   await supabase.auth.signOut();
+}
+
+/** Removes the account and everything tied to it (checks, chats, reports, family links). */
+export async function deleteMe() {
+  await del('/me');
 }
 
 export async function updateProfile(patchBody: Partial<Pick<User, 'name' | 'phone' | 'simpleMode' | 'suburb' | 'role'>>) {
@@ -120,6 +129,11 @@ export async function getCheck(id: string) {
 
 export async function listMyChecks() {
   return get<CheckResult[]>('/checks');
+}
+
+/** Deletes a check and its follow-up chat. */
+export async function deleteCheck(id: string) {
+  await del(`/checks/${id}`);
 }
 
 /** The saved follow-up chat on a check, oldest first. */

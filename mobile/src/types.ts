@@ -83,6 +83,8 @@ export type GuardianLink = {
   protectedId: string | null;
   protectedName: string;
   invitedPhone: string | null;
+  /** The person's own number from Settings, falling back to invitedPhone while pending. */
+  protectedPhone: string | null;
   code: string;
   status: 'pending' | 'active';
   shareCalls: boolean;

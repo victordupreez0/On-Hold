@@ -19,6 +19,9 @@ const linesToList = (s: string) =>
 
 export function ExplainerForm({ initial, submitLabel, onSubmit, busy }: { initial: ExplainerDraft; submitLabel: string; onSubmit: (d: ExplainerDraft) => void; busy?: boolean }) {
   const [d, setD] = useState(initial);
+  // Raw text while typing: splitting/trimming on every keystroke ate spaces and new lines as they were typed.
+  const [signs, setSigns] = useState(initial.signs.join('\n'));
+  const [whatToDo, setWhatToDo] = useState(initial.whatToDo.join('\n'));
   const set = <K extends keyof ExplainerDraft>(key: K, value: ExplainerDraft[K]) => setD((p) => ({ ...p, [key]: value }));
 
   return (
@@ -47,13 +50,13 @@ export function ExplainerForm({ initial, submitLabel, onSubmit, busy }: { initia
       </View>
       <TextField label="Example text" multiline value={d.example.text} onChangeText={(v) => set('example', { ...d.example, text: v })} />
 
-      <TextField label="Signs" hint="One per line." multiline value={d.signs.join('\n')} onChangeText={(v) => set('signs', linesToList(v))} />
-      <TextField label="What to do" hint="One per line." multiline value={d.whatToDo.join('\n')} onChangeText={(v) => set('whatToDo', linesToList(v))} />
+      <TextField label="Signs" hint="One per line." multiline value={signs} onChangeText={setSigns} />
+      <TextField label="What to do" hint="One per line." multiline value={whatToDo} onChangeText={setWhatToDo} />
 
       <TextField label="Source name" value={d.source.name} onChangeText={(v) => set('source', { ...d.source, name: v })} />
       <TextField label="Source URL" autoCapitalize="none" value={d.source.url} onChangeText={(v) => set('source', { ...d.source, url: v })} />
 
-      <Button label={submitLabel} loading={busy} onPress={() => onSubmit(d)} />
+      <Button label={submitLabel} loading={busy} onPress={() => onSubmit({ ...d, signs: linesToList(signs), whatToDo: linesToList(whatToDo) })} />
     </View>
   );
 }

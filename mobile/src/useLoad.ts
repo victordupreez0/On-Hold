@@ -9,15 +9,16 @@ type LoadState<T> = { data?: T; error?: string; loading: boolean };
  * `key` re-runs the load when a parameter (e.g. a filter or id) changes.
  */
 export function useLoad<T>(fn: () => Promise<T>, key = '') {
-  const [state, setState] = useState<LoadState<T>>({ loading: true });
+  // Remembers which key the data belongs to, so a new filter never shows the old filter's rows as current.
+  const [state, setState] = useState<LoadState<T> & { key?: string }>({ loading: true });
   const [tick, setTick] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       let live = true;
       fn().then(
-        (data) => live && setState({ data, loading: false }),
-        (e: Error) => live && setState({ error: e.message, loading: false }),
+        (data) => live && setState({ data, loading: false, key }),
+        (e: Error) => live && setState({ error: e.message, loading: false, key }),
       );
       return () => {
         live = false;
@@ -32,5 +33,6 @@ export function useLoad<T>(fn: () => Promise<T>, key = '') {
     setTick((t) => t + 1);
   };
 
-  return { ...state, reload };
+  const current: LoadState<T> = state.key === undefined || state.key === key ? state : { loading: true };
+  return { data: current.data, error: current.error, loading: current.loading, reload };
 }
