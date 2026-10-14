@@ -1,6 +1,7 @@
 // Backend API client. Every function here keeps the exact signature it had as
 // a mock (see git history) so screens never had to change between phases.
 import * as Linking from 'expo-linking';
+import { isAuthApiError } from '@supabase/supabase-js';
 
 import { API_URL, supabase } from './supabase';
 import type {
@@ -85,7 +86,11 @@ export async function signUp(input: { name: string; email: string; password: str
 
 export async function signIn(input: { email: string; password: string }) {
   const { error } = await supabase.auth.signInWithPassword({ email: input.email.trim().toLowerCase(), password: input.password });
-  if (error) throw new Error('That email and password don’t match.');
+  if (error) {
+    // A response came back (wrong password, unconfirmed email, etc.) vs. the
+    // request never reached the server at all -- those deserve different messages.
+    throw new Error(isAuthApiError(error) ? 'That email and password don’t match.' : 'Couldn’t reach the server. Check your connection and try again.');
+  }
   return getMe();
 }
 
