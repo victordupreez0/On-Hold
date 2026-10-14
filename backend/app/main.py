@@ -116,6 +116,14 @@ class ProfilePatch(BaseModel):
 _PROFILE_COLUMNS = {"name": "name", "phone": "phone", "simpleMode": "simple_mode", "suburb": "suburb"}
 
 
+@app.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(user: User):
+    """POPIA-style right to erasure: the person removes their own account and everything tied to it."""
+    if _is_last_admin(user.id):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "You’re the last admin, so you can’t delete your account.")
+    _delete_auth_user(user.id)
+
+
 @app.patch("/me")
 def update_me(body: ProfilePatch, user: User):
     patch = body.model_dump(exclude_unset=True)
@@ -203,6 +211,13 @@ def list_my_checks(user: User):
 def get_check(check_id: uuid.UUID, user: User):
     row = one(f"select {_CHECK_FIELDS} from checks where id = %(id)s and user_id = %(uid)s", {"id": check_id, "uid": user.id})
     return _found(row, "We couldn’t find that check.")
+
+
+@app.delete("/checks/{check_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_check(check_id: uuid.UUID, user: User):
+    """Its follow-up chat goes with it (cascade). Alerts a guardian already received keep their text."""
+    row = one("delete from checks where id = %(id)s and user_id = %(uid)s returning id", {"id": check_id, "uid": user.id})
+    _found(row, "We couldn’t find that check.")
 
 
 @app.post("/checks/{check_id}/alert")
@@ -677,13 +692,18 @@ def delete_user(user_id: uuid.UUID, admin: Admin):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "We couldn’t find that user.")
     if _is_last_admin(user_id):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Can’t delete the last admin.")
-    # Deleting only the profile row would orphan a still-signable-in auth account;
-    # deleting the auth user cascades to profiles (and from there to their checks,
-    # reports, guardian links and alerts).
+    _delete_auth_user(user_id)
+
+
+def _delete_auth_user(user_id: uuid.UUID):
+    """Deleting only the profile row would orphan a still-signable-in auth account;
+    deleting the auth user cascades to profiles (and from there to their checks,
+    chats, reports, guardian links and alerts)."""
     settings = get_settings()
     res = httpx.delete(
         f"{settings.supabase_url}/auth/v1/admin/users/{user_id}",
         headers={"apikey": settings.supabase_service_role_key, "Authorization": f"Bearer {settings.supabase_service_role_key}"},
+        timeout=15,
     )
     if res.status_code not in (200, 204):
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Couldn’t delete that account right now.")
