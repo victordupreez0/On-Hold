@@ -92,7 +92,7 @@ class BadImage(CheckFailed):
 _IMAGE_MAGIC = [("ffd8ff", "image/jpeg"), ("89504e47", "image/png"), ("47494638", "image/gif")]
 
 
-def _image_block(data: str) -> dict:
+def image_block(data: str) -> dict:
     """The picker's reported type can't be trusted: iOS hands over JPEG base64 for every
     pick but reports the original file's type (a PNG screenshot says image/png), and
     Claude rejects any mismatch. So read the real type from the bytes instead."""
@@ -118,7 +118,7 @@ def run_check(kind: Literal["message", "call"], text: str | None, image: dict | 
     if not text and not image:
         raise CheckFailed("Nothing to check.")
 
-    content: list[dict] = [_image_block(image.get("base64", ""))] if image else []
+    content: list[dict] = [image_block(image.get("base64", ""))] if image else []
     content.append(
         {
             "type": "text",

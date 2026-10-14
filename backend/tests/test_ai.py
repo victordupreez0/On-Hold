@@ -136,14 +136,14 @@ def test_image_type_is_read_from_the_bytes_not_the_client():
 
     jpeg = base64.b64encode(bytes.fromhex("ffd8ffe000104a464946") + b"rest").decode()
     png = base64.b64encode(bytes.fromhex("89504e470d0a1a0a") + b"rest").decode()
-    assert ai._image_block(jpeg)["source"]["media_type"] == "image/jpeg"
-    assert ai._image_block(f"data:image/png;base64,{png}")["source"] == {"type": "base64", "media_type": "image/png", "data": png}
+    assert ai.image_block(jpeg)["source"]["media_type"] == "image/jpeg"
+    assert ai.image_block(f"data:image/png;base64,{png}")["source"] == {"type": "base64", "media_type": "image/png", "data": png}
 
     heic = base64.b64encode(b"\0\0\0\x18ftypheic" + b"rest").decode()
     with pytest.raises(ai.BadImage):
-        ai._image_block(heic)
+        ai.image_block(heic)
     with pytest.raises(ai.BadImage):
-        ai._image_block("A" * (ai.MAX_IMAGE_BYTES * 2))
+        ai.image_block("A" * (ai.MAX_IMAGE_BYTES * 2))
 
 
 def _verdict(**overrides):

@@ -11,8 +11,9 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from psycopg.errors import ForeignKeyViolation, UniqueViolation
 from pydantic import BaseModel, Field
 
@@ -30,6 +31,19 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="On Hold API", lifespan=lifespan)
+
+_MAX_BODY_BYTES = 8 * 1024 * 1024  # a 5MB screenshot as base64 plus JSON, with room to spare
+
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    """FastAPI reads the whole body before auth runs, so cap it before anything else does.
+    ponytail: trusts Content-Length; a chunked upload without one is left to the hosting proxy."""
+    if int(request.headers.get("content-length") or 0) > _MAX_BODY_BYTES:
+        return JSONResponse({"detail": "That’s too big to send. Try a screenshot instead of a photo."}, status_code=413)
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in get_settings().cors_origins.split(",")],
@@ -53,7 +67,7 @@ def _found(row: dict | None, message: str) -> dict:
 
 
 def _require_suburb(name: str | None):
-    if name and not one("select 1 from suburbs where name = %(n)s", {"n": name}):
+    if name is not None and not one("select 1 from suburbs where name = %(n)s", {"n": name}):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Choose a suburb from the list.")
 
 
@@ -93,9 +107,9 @@ def get_me(user: User):
 
 
 class ProfilePatch(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=100)
+    name: str = Field(default=None, min_length=1, max_length=100)
     phone: str | None = Field(default=None, max_length=30)
-    simpleMode: bool | None = None
+    simpleMode: bool = None
     suburb: str | None = None
 
 
@@ -124,8 +138,8 @@ _CHECK_FIELDS = """id, user_id as "userId", kind, verdict, confidence, scam_type
 
 
 class ImageInput(BaseModel):
-    base64: str
-    mediaType: str | None = None  # ignored: the real type is read from the bytes (see ai._image_block)
+    base64: str = Field(max_length=7_500_000)  # ~5MB decoded; ai.image_block gives the friendly message
+    mediaType: str | None = None  # ignored: the real type is read from the bytes (see ai.image_block)
 
 
 class CheckInput(BaseModel):
@@ -136,6 +150,14 @@ class CheckInput(BaseModel):
 
 @app.post("/checks")
 def create_check(body: CheckInput, user: User):
+    # Cheap input problems answer before spending one of the person's hourly AI calls.
+    if not (body.text or "").strip() and not body.image:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Paste, type or share something to check first.")
+    if body.image:
+        try:
+            ai.image_block(body.image.base64)
+        except ai.BadImage as e:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
     _check_rate_limit(user.id)
 
     try:
@@ -260,7 +282,7 @@ class ReportInput(BaseModel):
     scamType: ScamType
     description: str = Field(min_length=10, max_length=1000)
     sender: str | None = Field(default=None, max_length=200)
-    suburb: str
+    suburb: str = Field(min_length=1)
     checkId: uuid.UUID | None = None
 
 
@@ -278,6 +300,8 @@ def get_report(report_id: uuid.UUID, user: User):
 @app.post("/reports")
 def create_report(body: ReportInput, user: User):
     _require_suburb(body.suburb)
+    if body.checkId and not one("select 1 from checks where id = %(c)s and user_id = %(u)s", {"c": body.checkId, "u": user.id}):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "We couldn’t find that check.")
     return one(
         f"""insert into reports (reporter_id, check_id, channel, scam_type, description, sender, suburb)
             values (%(reporterId)s, %(checkId)s, %(channel)s, %(scamType)s, %(description)s, %(sender)s, %(suburb)s)
@@ -528,7 +552,7 @@ _ADMIN_REPORT_FIELDS = _REPORT_FIELDS + ', moderated_by as "moderatedBy", modera
 
 @app.get("/admin/reports")
 def list_all_reports(
-    _: Admin, status: ReportStatus | None = None, scamType: ScamType | None = None, search: str | None = None, limit: int = 50, offset: int = 0
+    _: Admin, status: ReportStatus | None = None, scamType: ScamType | None = None, search: str | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)
 ):
     pattern = f"%{search}%" if search else None
     return query(
@@ -590,7 +614,7 @@ _USER_FIELDS = """id, name, email, phone, role, simple_mode as "simpleMode", sub
 
 
 @app.get("/admin/users")
-def list_users(_: Admin, search: str | None = None, role: Role | None = None, limit: int = 50, offset: int = 0):
+def list_users(_: Admin, search: str | None = None, role: Role | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
     pattern = f"%{search}%" if search else None
     return query(
         f"""select {_USER_FIELDS} from profiles
