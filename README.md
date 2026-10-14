@@ -58,9 +58,12 @@ npm start         # scan the QR code with Expo Go (Android) or the Camera app (i
 ```bash
 npx tsc --noEmit   # typecheck
 npx expo lint      # lint
+npx jest           # unit tests
 npx expo-doctor    # dependency health
 cd ../backend && uv run pytest   # backend tests
 ```
+
+**Testing honesty check:** the backend has 28 route/logic tests. The app has 16, and they're a starting point, not coverage — pure logic only (`src/validateReport.ts`, `src/components/ui.tsx`'s `timeAgo`/`hoursSince`), no component or screen tests yet. Anything that imports the Supabase client (which most components do, transitively) needs real native-module mocking to test, which wasn't worth the setup cost at this stage — manual click-through and the backend's route coverage are doing that job for now.
 
 ## Stack
 
