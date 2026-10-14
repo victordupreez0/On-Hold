@@ -42,7 +42,9 @@ def current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Please sign in again.")
     try:
         key = _jwks().get_signing_key_from_jwt(creds.credentials).key
-        payload = jwt.decode(creds.credentials, key, algorithms=["RS256", "ES256"], audience="authenticated")
+        # leeway: a server clock even a second behind Supabase's would otherwise reject
+        # every freshly issued token as "not yet valid" (iat in the future) right at sign-in.
+        payload = jwt.decode(creds.credentials, key, algorithms=["RS256", "ES256"], audience="authenticated", leeway=30)
     except jwt.PyJWTError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Please sign in again.")
 
