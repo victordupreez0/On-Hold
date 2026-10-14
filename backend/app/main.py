@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from . import ai, auth
 from .auth import CurrentUser, current_user, require_admin
 from .config import get_settings
-from .db import cursor, execute, get_pool, one, query
+from .db import execute, get_pool, one, query, transaction
 
 
 @asynccontextmanager
@@ -68,7 +68,7 @@ def _check_rate_limit(user_id: str):
     Only logs a timestamp -- never call content -- same privacy guarantee
     as checks themselves.
     """
-    with cursor() as cur:
+    with transaction() as cur:
         cur.execute("select pg_advisory_xact_lock(hashtext(%(id)s::text))", {"id": user_id})
         cur.execute(
             "select count(*) as n from ai_calls where user_id = %(id)s and created_at > now() - interval '1 hour'",

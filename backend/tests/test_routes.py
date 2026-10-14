@@ -89,7 +89,7 @@ def _fake_cursor_cm(fetchone_result):
 
 def test_rate_limit_blocks_at_the_cap(monkeypatch):
     cm, fake_cursor = _fake_cursor_cm({"n": main._MAX_AI_CALLS_PER_HOUR})
-    monkeypatch.setattr(main, "cursor", lambda: cm)
+    monkeypatch.setattr(main, "transaction", lambda: cm)
 
     with pytest.raises(Exception) as exc_info:
         main._check_rate_limit("u1")
@@ -101,7 +101,7 @@ def test_rate_limit_blocks_at_the_cap(monkeypatch):
 
 def test_rate_limit_allows_and_records_under_the_cap(monkeypatch):
     cm, fake_cursor = _fake_cursor_cm({"n": 0})
-    monkeypatch.setattr(main, "cursor", lambda: cm)
+    monkeypatch.setattr(main, "transaction", lambda: cm)
 
     main._check_rate_limit("u1")  # should not raise
     insert_calls = [c for c in fake_cursor.execute.call_args_list if "insert into ai_calls" in c.args[0]]
