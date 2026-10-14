@@ -8,9 +8,9 @@ import type {
   AlertItem,
   AreaStat,
   Channel,
-  ChatTurn,
   CheckInput,
   CheckResult,
+  ChatMessage,
   Circulating,
   Explainer,
   GuardianLink,
@@ -36,14 +36,14 @@ export class ApiError extends Error {
 
 const REQUEST_TIMEOUT_MS = 20_000;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const headers: Record<string, string> = { ...(init?.headers as Record<string, string>) };
   if (data.session) headers.Authorization = `Bearer ${data.session.access_token}`;
   if (init?.body) headers['Content-Type'] = 'application/json';
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, { ...init, headers, signal: controller.signal });
@@ -105,7 +105,8 @@ export async function updateProfile(patchBody: Partial<Pick<User, 'name' | 'phon
 // ---------- Checks ----------
 
 export async function check(input: CheckInput): Promise<CheckResult> {
-  return post<CheckResult>('/checks', input);
+  // Longer than the default: a screenshot upload plus the AI read can outlast 20s on a slow connection.
+  return request<CheckResult>('/checks', { method: 'POST', body: JSON.stringify(input) }, 45_000);
 }
 
 export async function transcribe(_audioUri: string): Promise<string> {
@@ -121,9 +122,14 @@ export async function listMyChecks() {
   return get<CheckResult[]>('/checks');
 }
 
-/** A free-form follow-up question about an existing check, grounded in its verdict. Nothing here is saved. */
-export async function askAboutCheck(checkId: string, question: string, history: ChatTurn[]) {
-  const { answer } = await post<{ answer: string }>(`/checks/${checkId}/messages`, { question, history });
+/** The saved follow-up chat on a check, oldest first. */
+export async function listCheckMessages(checkId: string) {
+  return get<ChatMessage[]>(`/checks/${checkId}/messages`);
+}
+
+/** A free-form follow-up question about an existing check. The server keeps the thread. */
+export async function askAboutCheck(checkId: string, question: string) {
+  const { answer } = await post<{ answer: string }>(`/checks/${checkId}/messages`, { question });
   return answer;
 }
 
