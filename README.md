@@ -4,6 +4,8 @@
 
 DV300 Theme 4 (AI-Driven Application), Victor du Preez (241250), Open Window, 2026.
 
+[![CI](https://github.com/victordupreez0/On-Hold/actions/workflows/ci.yml/badge.svg)](https://github.com/victordupreez0/On-Hold/actions/workflows/ci.yml)
+
 ## Status
 
 **Phase 1: frontend (done).** Every screen is built in the brand and runs on the web preview and in Expo Go.
@@ -147,7 +149,7 @@ A GitHub Projects board is set up next.
 1. ~~Verify end-to-end against the hosted Supabase project~~ — done: real sign-in, real Claude checks (text, call, the follow-up chat), reports through moderation, and the full guardian/invite/alert pipeline, all confirmed live. A hardening pass followed (atomic rate limiting, owner-scoping, clean validation errors instead of 500s — see the risks table above).
 2. **Usability test** — at least one person outside the project runs the core flow; log what they hit in GitHub Issues.
 3. **Real voice transcription** — pick a provider, wire it behind the existing mocked function (currently a labelled demo stand-in, not silently wrong).
-4. **Deployment (stretch)** — host the API (Render/Fly), ship an EAS web build or a TestFlight/APK build. Needs `app.json` bundle identifiers and an `eas.json` first.
+4. **Deployment (stretch)** — scaffolding is in: `mobile/app.json` has placeholder bundle identifiers (`com.onhold.app` — change this if you don't control that domain before an actual store submission), `mobile/eas.json` has development/preview/production build profiles, `backend/Procfile` has the start command. What's left needs real accounts, not more code: `eas login` then `eas build -p android --profile preview` (or `ios`) for a device build; a Render/Fly/Railway web service pointed at `backend/` (it'll run the `Procfile` automatically) with the same env vars as `backend/.env.example`, then update `CORS_ORIGINS` and `mobile/.env`'s `EXPO_PUBLIC_API_URL` to the real deployed URL.
 5. **Polish from the usability pass** — whatever the outside tester actually struggles with, prioritised over anything on this list.
 
 ## Money model (if it ever launches)
