@@ -161,11 +161,23 @@ function Today({ user, checks, onSeeAll }: { user: User; checks: ChecksLoad; onS
                 iconBg={colors.highlighter}
                 title={`${pending.data.length} ${pending.data.length === 1 ? 'report' : 'reports'} to review`}
                 subtitle="Approve real scams so they warn people nearby"
-                onPress={() => router.push('/admin')}
+                onPress={() => router.push('/admin/reports')}
               />
             )}
           </ListGroup>
         </Section>
+      )}
+
+      {!user.suburb && (
+        <ListGroup>
+          <ListRow
+            icon="map-pin"
+            iconBg={colors.highlighter}
+            title="Set your area"
+            subtitle="So we can warn you about scams going around near you"
+            onPress={() => router.push('/settings')}
+          />
+        </ListGroup>
       )}
 
       <Section title="Recent" action={!!checks.data && checks.data.length > 3 && <TextLink label="See all" onPress={onSeeAll} />}>
@@ -387,7 +399,7 @@ const styles = StyleSheet.create({
   },
   pauseBar: { width: 5, height: 16, borderRadius: 3, backgroundColor: colors.ink },
   segments: { flexDirection: 'row', backgroundColor: colors.grey, borderRadius: radius.pill, padding: 4, marginBottom: -space.sm },
-  segment: { flex: 1, minHeight: minTouch - 4, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
+  segment: { flex: 1, minHeight: minTouch, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   segmentOn: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
   emptyRecent: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.hairline },
   tip: { flexDirection: 'row', gap: space.md, padding: space.md + 2, borderRadius: radius.lg, backgroundColor: colors.waitTint },

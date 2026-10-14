@@ -63,6 +63,7 @@ function ReportCard({ report: r, onDone }: { report: AdminReport; onDone: () => 
   const [busy, setBusy] = useState(false);
 
   const moderate = async (decision: 'approved' | 'rejected', reason?: string) => {
+    if (busy) return; // the reason chips have no disabled state, so a double tap would moderate twice
     setBusy(true);
     try {
       await api.moderateReport(r.id, decision, reason);

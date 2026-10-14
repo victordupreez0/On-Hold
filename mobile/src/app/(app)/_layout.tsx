@@ -69,7 +69,7 @@ function TabBar({ state, navigation, insets }: BottomTabBarProps) {
               <T
                 v="small"
                 color={focused ? colors.ink : colors.inkSoft}
-                style={{ fontSize: 13, lineHeight: 16, fontFamily: focused ? font.semibold : font.regular }}>
+                style={{ fontSize: 14, lineHeight: 17, fontFamily: focused ? font.semibold : font.regular }}>
                 {meta.label}
               </T>
             </Pressable>
