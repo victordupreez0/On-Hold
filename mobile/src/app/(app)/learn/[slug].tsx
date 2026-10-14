@@ -16,7 +16,7 @@ export default function ExplainerScreen() {
   return (
     <Screen>
       <Header />
-      {guide.data ? <Guide e={guide.data} /> : guide.error ? <ErrorState message={guide.error} /> : <Loading />}
+      {guide.data ? <Guide e={guide.data} /> : guide.error ? <ErrorState message={guide.error} onRetry={guide.reload} /> : <Loading />}
     </Screen>
   );
 }

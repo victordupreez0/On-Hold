@@ -83,7 +83,7 @@ function FullHome({ user }: { user: User }) {
     <Screen edges={[]} style={{ paddingTop: 0 }}>
       <Hero user={user} />
       <Segments value={tab} onChange={setTab} />
-      {tab === 'today' ? <Today user={user} checks={checks.data} onSeeAll={() => setTab('history')} /> : <History checks={checks} />}
+      {tab === 'today' ? <Today user={user} checks={checks} onSeeAll={() => setTab('history')} /> : <History checks={checks} />}
     </Screen>
   );
 }
@@ -124,7 +124,9 @@ function CheckRow({ check }: { check: CheckResult }) {
 }
 
 /** What matters right now: your latest checks, one tip, and what's going around. */
-function Today({ user, checks, onSeeAll }: { user: User; checks?: CheckResult[]; onSeeAll: () => void }) {
+type ChecksLoad = { data?: CheckResult[]; error?: string; reload: () => void };
+
+function Today({ user, checks, onSeeAll }: { user: User; checks: ChecksLoad; onSeeAll: () => void }) {
   const family = useLoad(api.getFamily);
   const circulating = useLoad(api.listCirculating);
   const pending = useLoad(() => (user.role === 'admin' ? api.listPendingReports() : Promise.resolve([])), user.role);
@@ -134,7 +136,7 @@ function Today({ user, checks, onSeeAll }: { user: User; checks?: CheckResult[];
 
   const near = circulating.data?.[0];
   const nearGuide = near && explainers.data?.find((e) => e.scamType === near.scamType);
-  const recent = checks?.slice(0, 3);
+  const recent = checks.data?.slice(0, 3);
   const fresh = alerts.data?.filter((a) => !a.seen).slice(0, 3) ?? [];
 
   return (
@@ -166,8 +168,10 @@ function Today({ user, checks, onSeeAll }: { user: User; checks?: CheckResult[];
         </Section>
       )}
 
-      <Section title="Recent" action={!!checks && checks.length > 3 && <TextLink label="See all" onPress={onSeeAll} />}>
-        {!recent ? (
+      <Section title="Recent" action={!!checks.data && checks.data.length > 3 && <TextLink label="See all" onPress={onSeeAll} />}>
+        {checks.error ? (
+          <ErrorState message={checks.error} onRetry={checks.reload} />
+        ) : !recent ? (
           <Loading />
         ) : recent.length ? (
           <ListGroup>
@@ -235,7 +239,7 @@ function TipOfTheDay({ guides }: { guides: Explainer[] }) {
 }
 
 /** Every check you've made, newest first, with how much you asked about each. */
-function History({ checks }: { checks: { data?: CheckResult[]; error?: string; reload: () => void } }) {
+function History({ checks }: { checks: ChecksLoad }) {
   if (checks.error) return <ErrorState message={checks.error} onRetry={checks.reload} />;
   if (!checks.data) return <Loading />;
   if (!checks.data.length) {
