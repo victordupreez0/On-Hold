@@ -32,6 +32,8 @@ jobs:
           cache: npm
           cache-dependency-path: mobile/package-lock.json
       - run: npm ci
+      # The Expo dev server writes this (gitignored) file on any machine that has run it; CI never has.
+      - run: echo '/// <reference types="expo/types" />' > expo-env.d.ts
       - run: npx tsc --noEmit
       - run: npx expo lint
       - run: npx jest
