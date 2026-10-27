@@ -51,7 +51,7 @@ export function ScamMap({ areas, selected, onSelect, center }: ScamMapProps) {
             <Circle key={`${a.name}-ring`} center={center} radius={heatRadius(t)} strokeColor={colors.ink} strokeWidth={2} fillColor="transparent" />
           ),
           <Marker key={`${a.name}-tap`} coordinate={center} onPress={() => onSelect(a.name)} tracksViewChanges={false} anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={styles.tap} accessibilityLabel={`${a.name}: ${a.count} reports`} />
+            <View style={styles.tap} accessibilityLabel={`${a.name}: ${a.count} ${a.count === 1 ? 'report' : 'reports'}`} />
           </Marker>,
         ];
       })}
