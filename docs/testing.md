@@ -4,8 +4,8 @@
 
 | Layer | What | Run it |
 |---|---|---|
-| API | Route and AI-logic tests with pytest: owner scoping, the AI rate limit, role checks, last-admin protection, input validation, Claude's output validation, admin create/edit, the activity feed, transcription | `cd backend && uv run pytest` |
-| App | Type checking, lint, and jest tests on the pure logic (report validation, time formatting) | `cd mobile && npx tsc --noEmit && npx expo lint && npx jest` |
+| API | 54 route and AI-logic tests with pytest: owner scoping, the AI rate limit, role checks, last-admin protection, input validation, Claude's output validation, admin create/edit, the activity feed, transcription | `cd backend && uv run pytest` |
+| App | Type checking, lint, and 16 jest tests on the pure logic (report validation, time formatting) | `cd mobile && npx tsc --noEmit && npx expo lint && npx jest` |
 | CI | Both of the above on every push and pull request, with no secrets available | [.github/workflows/ci.yml](../.github/workflows/ci.yml) |
 | Live | Every backend change was checked against the real hosted database: migrations pushed, real demo accounts signed in through Supabase Auth, and each new or changed route called for real. Throwaway accounts made for this were deleted afterwards. | — |
 
@@ -17,7 +17,7 @@ Every bug found and fixed, newest first. Each fix is its own commit, so the comm
 
 | Date | What went wrong | How it showed up | Fix |
 |---|---|---|---|
-| 27 Oct | The "Speak" button returned the same canned transcript whatever was said, so it could even produce a Stop and a family alert for a call that never happened | Final review against the brief | Real speech-to-text (Whisper on Cloudflare Workers AI) |
+| 27 Oct | The "Speak" button returned the same canned transcript whatever was said, so it could even produce a Stop and a family alert for a call that never happened | Final review against the brief | `77054fd`, `c6d7290`: real speech-to-text (Whisper on Cloudflare Workers AI). Unit-tested; one live recording still to run once the Cloudflare keys are set. |
 | 27 Oct | Admins couldn't see who was using the app or what they were doing; the activity list had no names and covered only three event types | Final review against the brief | `2fb37eb`, `c851588` |
 | 27 Oct | CI's type check failed on every clean checkout (a generated, gitignored Expo declaration file only exists on machines that ran the dev server) | Reproduced on a clean worktree | `5e4a501` |
 | 27 Oct | The admin demo account used the password published in the README, so once deployed anyone could administer the app | Review of the public demo | `063b951`: admin password comes from a private setting |
