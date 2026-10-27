@@ -139,17 +139,19 @@ img, svg { display: block; }
 .phone::before, .phone::after { content: ""; position: absolute; width: 4px; background: #2A2A28; border-radius: 2px; }
 .phone::before { left: -3px; top: 168px; height: 64px; box-shadow: 0 84px 0 #2A2A28; }
 .phone::after { right: -3px; top: 220px; height: 96px; }
-.screen { display: flex; flex-direction: column; height: 100%; border-radius: 49px; overflow: hidden; background: var(--white); }
+/* Like a real iPhone, the app fills the whole screen and the status bar and home bar float over it.
+   The app pads itself by the same 46px and 26px (FRAME_INSETS in mobile/src/app/_layout.tsx). */
+.screen { position: relative; height: 100%; border-radius: 49px; overflow: hidden; background: var(--yellow); }
 .status {
-  position: relative; flex: none; height: 46px; display: flex; align-items: center; justify-content: space-between;
+  position: absolute; z-index: 1; inset: 0 0 auto; pointer-events: none; height: 46px; display: flex; align-items: center; justify-content: space-between;
   padding: 4px 30px 0 34px; font-size: 0.9375rem; font-weight: 800;
 }
 .island { position: absolute; left: 50%; top: 10px; translate: -50% 0; width: 108px; height: 30px; border-radius: 20px; background: var(--ink); }
 .status-icons { width: 54px; height: 12px; fill: var(--ink); color: var(--ink); stroke-width: 1; }
-.viewport { position: relative; flex: 1; background: var(--yellow); }
+.viewport { position: absolute; inset: 0; }
 .splash { position: absolute; width: 120px; height: 120px; left: 50%; top: 50%; translate: -50% -50%; --logo-halo: var(--yellow-deep); --logo-bars: var(--ink); }
 .viewport iframe { position: relative; display: block; width: 100%; height: 100%; border: 0; }
-.home-bar { flex: none; height: 26px; display: grid; place-items: center; }
+.home-bar { position: absolute; z-index: 1; inset: auto 0 0; pointer-events: none; height: 26px; display: grid; place-items: center; }
 .home-bar::before { content: ""; width: 128px; height: 5px; border-radius: 3px; background: var(--ink); }
 .phone:focus-within { outline: 4px solid var(--ink); outline-offset: 6px; }
 
