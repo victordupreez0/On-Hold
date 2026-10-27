@@ -17,10 +17,25 @@ JSON in prose" failure mode to handle.
 
 The system prompt (`SYSTEM_PROMPT` in `ai.py`) gives Claude:
 
-- **Three verdicts and what each means** -- `stop` (confident, specific match
-  to a known pattern), `wait` (suspicious but not certain), `safe` (ordinary).
-  Never "certainly safe" -- the pitch's own stated risk is a false negative
-  reassuring someone into a scam, so the prompt explicitly forbids that word.
+- **Four verdicts and what each means** -- `stop` (confident, specific match
+  to a known pattern), `wait` (suspicious but not certain), `safe` (ordinary),
+  and `info`: a genuine warning *about* a scam (an awareness poster, a news
+  report). Never "certainly safe" -- the pitch's own stated risk is a false
+  negative reassuring someone into a scam, so the prompt explicitly forbids that word.
+- **Why `info` exists** -- a real AARTO warning poster used to come back as a
+  big green "Looks okay", which someone could read as "fine messages are okay".
+  `info` shows grey with an "i" ("Scam warning"), and its headline must say the
+  scam is real. A "warning" that's false, or that pushes a link, number,
+  payment or details, is `stop`: scammers dress up as official notices. Unsure
+  whether a warning is genuine: `wait`.
+- **Sources from a vetted list only** -- the model may cite 0-2 ids from
+  `SOURCES` (SABRIC, SASSA, the SRD site, SARS, AARTO, FSCA, PASA, SAPS); the
+  schema is a `Literal` of those ids, so an invented link can't get through,
+  and the server turns ids into names and URLs. Next steps may only name an
+  official site or number it's sure of, never one from the message itself.
+- **Cached** -- the system prompt (~2.1k tokens with the source list) is sent
+  with `cache_control`, so checks within 5 minutes of each other read it at a
+  tenth of the price.
 - **The South African scam patterns worth naming** -- fake bank fraud calls,
   SASSA/SARS/AARTO impersonation, the "new number" family scam, courier fees,
   WhatsApp job scams, DebiCheck, investment schemes -- the same list the app
@@ -44,13 +59,14 @@ The system prompt (`SYSTEM_PROMPT` in `ai.py`) gives Claude:
 
 | Field | Constraint |
 |---|---|
-| `verdict` | one of `stop` / `wait` / `safe` |
+| `verdict` | one of `stop` / `wait` / `safe` / `info` |
 | `confidence` | `0 <= x <= 1` |
 | `scam_type` | one of the 10 `ScamType` values, or `null` |
 | `headline` | 1-120 chars |
 | `reasons`, `next_steps` | 1-3 items each, never empty |
 | `say_this` | optional, <=300 chars |
 | `is_call` | bool -- lets the model upgrade a message to a call when the text describes one, replacing the old regex (`CALL_HINT`) |
+| `sources` | 0+ ids from `SOURCES`; repeats dropped, max 3, returned as `{name, url}` and stored on the check |
 
 Claude's structured-output mode constrains generation to this schema already;
 Pydantic re-validates on the client side as a second check, so a response
@@ -61,7 +77,7 @@ Two rules enforced in code, not the schema (`run_check()`):
 
 - `kind` is `"call"` if either the app's own hint (`CheckInput.kind`) or the
   model's `is_call` says so -- either signal is enough.
-- `say_this` is only kept for calls with a non-`safe` verdict; if the model
+- `say_this` is only kept for calls with a `stop` or `wait` verdict; if the model
   left it blank, the fixed `GENERIC_SAY` sentence fills in, so the UI's
   "say this, then hang up" card is never empty when it should show.
 
