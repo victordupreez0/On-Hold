@@ -75,8 +75,8 @@ _MAX_AI_CALLS_PER_HOUR = 30
 
 
 def _check_rate_limit(user_id: str):
-    """Atomic per-user hourly cap on Claude calls (checks + follow-up chat
-    share one budget). A per-user advisory lock serializes concurrent
+    """Atomic per-user hourly cap on AI calls (checks, follow-up chat and
+    transcription share one budget). A per-user advisory lock serializes concurrent
     requests from the same user around the count-then-record step, closing
     the race a plain count-then-insert has under FastAPI's thread pool.
     Only logs a timestamp -- never call content -- same privacy guarantee
