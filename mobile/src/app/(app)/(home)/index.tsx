@@ -78,13 +78,22 @@ type Tab = 'today' | 'history';
 function FullHome({ user }: { user: User }) {
   const [tab, setTab] = useState<Tab>('today');
   const checks = useLoad(api.listMyChecks);
+  const insets = useSafeAreaInsets();
+  const [heroHeight, setHeroHeight] = useState(Infinity);
+  const [underBar, setUnderBar] = useState(false);
 
   return (
-    <Screen edges={[]} style={{ paddingTop: 0 }}>
-      <Hero user={user} />
-      <Segments value={tab} onChange={setTab} />
-      {tab === 'today' ? <Today user={user} checks={checks} onSeeAll={() => setTab('history')} /> : <History checks={checks} />}
-    </Screen>
+    <View style={{ flex: 1 }}>
+      <Screen edges={[]} style={{ paddingTop: 0 }} onScroll={(e) => setUnderBar(e.nativeEvent.contentOffset.y > heroHeight - insets.top)}>
+        <View onLayout={(e) => setHeroHeight(e.nativeEvent.layout.height)}>
+          <Hero user={user} />
+        </View>
+        <Segments value={tab} onChange={setTab} />
+        {tab === 'today' ? <Today user={user} checks={checks} onSeeAll={() => setTab('history')} /> : <History checks={checks} />}
+      </Screen>
+      {/* Like iOS: once the yellow hero has scrolled away, a bar fills in behind the clock so text never runs under it. */}
+      {underBar && <View style={[styles.statusBar, { height: insets.top }]} />}
+    </View>
   );
 }
 
@@ -368,6 +377,15 @@ function SimpleHome({ user }: { user: User }) {
 }
 
 const styles = StyleSheet.create({
+  statusBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.hairline,
+  },
   hero: {
     backgroundColor: colors.highlighter,
     marginHorizontal: -(space.lg - 4),
