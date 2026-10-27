@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   View,
+  type ScrollViewProps,
   type StyleProp,
   type TextInputProps,
   type TextProps,
@@ -44,12 +45,18 @@ type ScreenProps = {
   /** Admin screens only: a wider column for tables/grids, instead of the
    * 560px cap every other screen uses so the web preview reads like a phone. */
   wide?: boolean;
+  onScroll?: ScrollViewProps['onScroll'];
 };
 
 /** Safe-area page with a centred max width, so the web preview reads like a phone. */
-export function Screen({ children, scroll = true, footer, edges = ['top'], style, background = colors.white, wide = false }: ScreenProps) {
+export function Screen({ children, scroll = true, footer, edges = ['top'], style, background = colors.white, wide = false, onScroll }: ScreenProps) {
   const body = scroll ? (
-    <ScrollView contentContainerStyle={[styles.pad, style]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={[styles.pad, style]}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      onScroll={onScroll}
+      scrollEventThrottle={16}>
       {children}
     </ScrollView>
   ) : (
