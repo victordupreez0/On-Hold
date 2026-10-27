@@ -236,12 +236,12 @@ def test_delete_suburb_still_in_use_is_a_clean_400(monkeypatch):
 def test_admin_dashboard_shape(monkeypatch):
     app.dependency_overrides[current_user] = lambda: _admin()
     monkeypatch.setattr(main, "query", lambda *a, **k: [])
-    monkeypatch.setattr(main, "one", lambda *a, **k: {"n": 0})
+    monkeypatch.setattr(main, "one", lambda *a, **k: {"checks": 0, "ai": 0, "joined": 0, "active": 0})
     res = client.get("/admin/dashboard")
     assert res.status_code == 200
     body = res.json()
     assert set(body.keys()) == {"users", "checks", "reports", "aiCallsLast24h", "trend", "activity"}
-    assert body["users"]["byRole"] == {"protected": 0, "guardian": 0, "admin": 0}
+    assert body["users"] == {"total": 0, "byRole": {"protected": 0, "guardian": 0, "admin": 0}, "new7Days": 0, "active7Days": 0}
 
 
 def test_bad_check_input_is_rejected_before_spending_a_rate_limit_slot(monkeypatch):
@@ -266,3 +266,66 @@ def test_inputs_that_used_to_500(monkeypatch):
     assert client.patch("/me", json={"simpleMode": None}).status_code == 422
     big = client.post("/checks", content=b"x", headers={"content-length": str(9 * 1024 * 1024), "content-type": "application/json"})
     assert big.status_code == 413
+
+
+def test_admin_edits_only_the_fields_sent(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _admin()
+    monkeypatch.setattr(main, "one", lambda *a, **k: {"x": 1})  # the suburb exists
+    cm, cur = _fake_cursor_cm(_USER_ROW)
+    monkeypatch.setattr(main, "transaction", lambda: cm)
+    res = client.patch(f"/admin/users/{_uuid.uuid4()}", json={"name": "Thandi", "phone": "  ", "suburb": "Soweto"})
+    assert res.status_code == 200
+    sql, params = cur.execute.call_args.args
+    assert "name = %(name)s" in sql and "suburb = %(suburb)s" in sql and "role" not in sql.split("returning")[0]
+    assert params["phone"] is None  # blank clears it rather than saving spaces
+
+
+def test_admin_can_rename_self_but_not_change_own_role(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _admin()
+    cm, _ = _fake_cursor_cm(_USER_ROW)
+    monkeypatch.setattr(main, "transaction", lambda: cm)
+    assert client.patch(f"/admin/users/{ADMIN_ID}", json={"name": "Lerato M"}).status_code == 200
+    assert client.patch(f"/admin/users/{ADMIN_ID}", json={"role": "guardian"}).status_code == 400
+
+
+def test_create_user_returns_a_one_time_password(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _admin()
+    monkeypatch.setattr(main, "one", lambda *a, **k: _USER_ROW)
+    sent = {}
+
+    def fake_auth(method, path, **kw):
+        sent.update(kw["json"])
+        return MagicMock(status_code=200, json=lambda: {"id": str(_uuid.uuid4())})
+
+    monkeypatch.setattr(main, "_auth_admin", fake_auth)
+    res = client.post("/admin/users", json={"name": "Gogo Mavis", "email": "Mavis@Example.test", "role": "protected"})
+    assert res.status_code == 201
+    assert len(res.json()["tempPassword"]) >= 12 and sent["email"] == "mavis@example.test" and sent["email_confirm"]
+
+
+def test_create_user_with_a_taken_email_is_a_clean_400(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _admin()
+    monkeypatch.setattr(main, "_auth_admin", lambda *a, **k: MagicMock(status_code=422))
+    res = client.post("/admin/users", json={"name": "Marie", "email": "marie@onhold.test", "role": "protected"})
+    assert res.status_code == 400
+    assert client.post("/admin/users", json={"name": "X", "email": "not-an-email", "role": "protected"}).status_code == 422
+
+
+def test_activity_is_admin_only_and_filters_by_user(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _user(role="guardian")
+    assert client.get("/admin/activity").status_code == 403
+    app.dependency_overrides[current_user] = lambda: _admin()
+    seen = {}
+    monkeypatch.setattr(main, "query", lambda sql, params=None: seen.update(params) or [])
+    uid = _uuid.uuid4()
+    assert client.get(f"/admin/activity?userId={uid}&type=check").status_code == 200
+    assert seen["userId"] == uid and seen["type"] == "check"
+    assert client.get("/admin/activity?type=nonsense").status_code == 422
+
+
+def test_demo_accounts_cant_delete_themselves(monkeypatch):
+    marie = _user()
+    marie.row["email"] = "marie@onhold.test"
+    app.dependency_overrides[current_user] = lambda: marie
+    monkeypatch.setattr(main, "_delete_auth_user", lambda _: (_ for _ in ()).throw(AssertionError("deleted")))
+    assert client.delete("/me").status_code == 400

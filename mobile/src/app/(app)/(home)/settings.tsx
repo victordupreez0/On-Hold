@@ -95,7 +95,7 @@ export default function Settings() {
 
       <ListGroup>
         <ListRow icon="flag" title="My reports" subtitle="Scams you’ve reported" onPress={() => router.push('/reports')} />
-        {user.role === 'admin' && <ListRow icon="shield" title="Review reports" subtitle="Approve or reject new reports" onPress={() => router.push('/admin/reports')} />}
+        {user.role === 'admin' && <ListRow icon="shield" title="Admin panel" subtitle="Dashboard, activity, users, reports and Learn guides" onPress={() => router.push('/admin')} />}
       </ListGroup>
 
       <Button label="Sign out" variant="ghost" icon="log-out" onPress={signOut} />

@@ -5,13 +5,14 @@ import { ScrollView, View } from 'react-native';
 import * as api from '@/api';
 import type { AdminReport } from '@/api';
 import { confirm } from '@/confirm';
-import { Button, Card, Chip, ErrorState, Feather, Header, Loading, Pill, Screen, T, timeAgo } from '@/components/ui';
+import { Button, Card, Chip, ErrorState, Feather, Header, Loading, Pill, Screen, T, TextLink, timeAgo } from '@/components/ui';
 import { CHANNEL_LABELS, SCAM_LABELS } from '@/fixtures';
 import { colors, space } from '@/theme';
 import { useToast } from '@/toast';
 import type { ReportStatus } from '@/types';
 import { useLoad } from '@/useLoad';
 
+const PAGE = 50;
 const REASONS = ['A personal dispute, not a scam', 'Contains personal information', 'Not enough detail', 'Already reported'];
 const FILTERS: { label: string; status?: ReportStatus }[] = [
   { label: 'Pending', status: 'pending' },
@@ -23,14 +24,23 @@ const FILTERS: { label: string; status?: ReportStatus }[] = [
 /** Full report admin: moderate pending ones, edit or remove any report regardless of status. */
 export default function AdminReports() {
   const [status, setStatus] = useState<ReportStatus | undefined>('pending');
-  const list = useLoad(() => api.listAllReports({ status, limit: 100 }), status ?? 'all');
+  const [limit, setLimit] = useState(PAGE);
+  const list = useLoad(() => api.listAllReports({ status, limit }), `${status ?? 'all'}-${limit}`);
 
   return (
     <Screen wide>
       <Header title="Reports" />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingRight: space.md }}>
         {FILTERS.map((f) => (
-          <Chip key={f.label} label={f.label} selected={status === f.status} onPress={() => setStatus(f.status)} />
+          <Chip
+            key={f.label}
+            label={f.label}
+            selected={status === f.status}
+            onPress={() => {
+              setStatus(f.status);
+              setLimit(PAGE);
+            }}
+          />
         ))}
       </ScrollView>
 
@@ -45,7 +55,12 @@ export default function AdminReports() {
           <T color={colors.inkSoft}>No reports match this filter.</T>
         </View>
       ) : (
-        list.data.map((r) => <ReportCard key={r.id} report={r} onDone={list.reload} />)
+        <>
+          {list.data.map((r) => (
+            <ReportCard key={r.id} report={r} onDone={list.reload} />
+          ))}
+          {list.data.length === limit && limit < 200 && <Button label="Show more" variant="secondary" icon="chevron-down" onPress={() => setLimit(limit + PAGE)} />}
+        </>
       )}
     </Screen>
   );
@@ -106,6 +121,14 @@ function ReportCard({ report: r, onDone }: { report: AdminReport; onDone: () => 
         {CHANNEL_LABELS[r.channel]} · {r.suburb}
         {r.sender ? ` · from ${r.sender}` : ''}
       </T>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.sm }}>
+        <TextLink label={`Reported by ${r.reporterName ?? 'a deleted account'}`} icon="user" onPress={() => router.push(`/admin/users/${r.reporterId}`)} />
+        {r.moderatorName && r.status !== 'pending' && (
+          <T v="small" color={colors.inkSoft}>
+            {r.status === 'approved' ? 'Approved' : 'Rejected'} by {r.moderatorName}
+          </T>
+        )}
+      </View>
       {r.status === 'rejected' && r.rejectReason && (
         <T v="small" color={colors.stop}>
           Reason: {r.rejectReason}

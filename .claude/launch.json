@@ -4,8 +4,25 @@
     {
       "name": "mobile-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "mobile", "run", "web"],
+      "runtimeArgs": [
+        "--prefix",
+        "mobile",
+        "run",
+        "web"
+      ],
       "port": 8081
+    },
+    {
+      "name": "website",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8720",
+        "--directory",
+        "website"
+      ],
+      "port": 8720
     }
   ]
 }
