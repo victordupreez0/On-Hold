@@ -15,3 +15,6 @@ supabase/.temp/
 # local attachments / secrets dropped in .claude (keep launch config)
 .claude/*
 !.claude/launch.json
+
+# wrangler cache from Cloudflare Pages deploys
+.wrangler/
