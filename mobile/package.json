@@ -51,6 +51,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "export:web": "expo export -p web --output-dir dist --clear && node scripts/pages-assets.js",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "jest"
