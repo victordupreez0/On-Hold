@@ -53,7 +53,7 @@ export default function Learn() {
                 key={c.scamType}
                 icon="trending-up"
                 title={SCAM_LABELS[c.scamType]}
-                subtitle={c.nearYou ? `${c.nearYou} near you · ${c.count} in total` : `${c.count} ${c.count === 1 ? 'report' : 'reports'}`}
+                subtitle={`${c.nearYou ? `${c.nearYou} near you · ` : ''}${c.count} ${c.count === 1 ? 'report' : 'reports'} in South Africa`}
                 onPress={guideFor(c.scamType) ? () => openGuide(c.scamType) : undefined}
               />
             ))}

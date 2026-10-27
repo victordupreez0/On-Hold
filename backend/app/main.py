@@ -391,7 +391,8 @@ def list_circulating(user: User):
                count(*) filter (where r.suburb = %(suburb)s) as "nearYou",
                max(r.created_at) as "latestAt"
            from reports r
-           where r.status = 'approved' and r.created_at >= now() - interval '14 days'
+           -- "Something else" isn't a trick anyone can learn, and it has no guide to open.
+           where r.status = 'approved' and r.created_at >= now() - interval '14 days' and r.scam_type <> 'other'
            group by r.scam_type
            order by "nearYou" desc, count desc
            limit 4""",
