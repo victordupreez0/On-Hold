@@ -32,7 +32,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="On Hold API", lifespan=lifespan)
 
-_MAX_BODY_BYTES = 8 * 1024 * 1024  # a 5MB screenshot as base64 plus JSON, with room to spare
+_MAX_BODY_BYTES = 4_500_000  # Vercel's own request cap; matching it means our friendly message, not theirs, locally too
 
 
 @app.middleware("http")
@@ -148,7 +148,7 @@ _CHECK_FIELDS = """id, user_id as "userId", kind, verdict, confidence, scam_type
 
 
 class ImageInput(BaseModel):
-    base64: str = Field(max_length=7_500_000)  # ~5MB decoded; ai.image_block gives the friendly message
+    base64: str = Field(max_length=4_400_000)  # ~3.3MB decoded, inside the 4.5MB body cap; a screenshot is far smaller
     mediaType: str | None = None  # ignored: the real type is read from the bytes (see ai.image_block)
 
 

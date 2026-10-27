@@ -58,7 +58,15 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
   if (!res.ok) {
     // FastAPI's own validation errors (422) carry a list of field problems, not a sentence -- it rendered as "[object Object]".
     const detail = body?.detail;
-    const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? 'Some of that isn’t quite right. Check what you entered and try again.' : 'Something went wrong. Please try again.';
+    // The host can turn away an oversized upload before the API sees it, so its 413 carries no detail of ours.
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : res.status === 413
+          ? 'That’s too big to send. Try a screenshot instead of a photo.'
+          : Array.isArray(detail)
+            ? 'Some of that isn’t quite right. Check what you entered and try again.'
+            : 'Something went wrong. Please try again.';
     throw new ApiError(message, res.status);
   }
   return body as T;
