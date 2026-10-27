@@ -401,7 +401,8 @@ The backend has route and AI-logic tests in pytest. The app has type checking, l
 | Sign up / sign in / sign out, protected/guardian/admin roles | Simple mode (one giant button) | SMS fallback alerts |
 | Guardian invites, consent toggles, Stop-verdict alerts | "Tell my family" from any verdict | Forgot-password flow |
 | Scam report create/read/update/delete, moderation queue | Admin activity feed and user history | App Store and Google Play release |
-| Community map (suburb heat, type filter) + Learn tab | Public website with a live demo | — |
+| Community map (suburb heat, type filter) + Learn tab | Public website with a live demo | **Scam intelligence that doesn't depend on reports:** a daily AI job reads official sources (SABRIC, SASSA, SARS, RTIA, FSCA's warnings list, SAPS, bank fraud alerts) and drafts alerts and guides with the source attached; an admin approves them before they reach "Going around" and Learn. In-app reports stay as the local, near-you layer, since official sources rarely say which suburb. |
+| | Grey "Scam warning" outcome, and verdicts that cite official sources | An accuracy test set (real SA scams, genuine messages, warnings and fake warnings) run before any model or prompt change |
 
 ### Scope changes since the pitch
 
