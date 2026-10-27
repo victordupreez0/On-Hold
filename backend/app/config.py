@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     database_url: str
     anthropic_api_key: str
     anthropic_model: str = "claude-sonnet-5"
+    # Speech-to-text (Workers AI Whisper). Optional: without them "Speak" answers 503 and typing still works.
+    cloudflare_account_id: str = ""
+    cloudflare_api_token: str = ""
     cors_origins: str = "http://localhost:8081"
     # Enables the "test-error" phrase that forces the check-failed screen for a live demo. Never in production.
     demo_hooks: bool = False

@@ -9,6 +9,7 @@ from functools import lru_cache
 from typing import Literal
 
 import anthropic
+import httpx
 from pydantic import BaseModel, Field, ValidationError
 
 from .config import get_settings
@@ -216,9 +217,41 @@ def ask_about_check(check: dict, history: list[dict], question: str) -> str:
     return text
 
 
-def transcribe(_audio_uri: str) -> str:
-    # ponytail: canned transcript until a speech-to-text provider is wired up.
-    return (
-        "A man phoned saying he is from the bank’s fraud department. He says someone is stealing "
-        "from my account and I must read him the code they just sent me."
-    )
+# Speech-to-text runs on Cloudflare Workers AI's Whisper: Claude doesn't take audio.
+WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
+MAX_AUDIO_BYTES = 5 * 1024 * 1024  # the app stops at 2 minutes, about 2MB at its 128kbps
+
+
+class BadAudio(CheckFailed):
+    """The recording itself is the problem (empty, corrupt, too big) -- surfaced as a 400."""
+
+
+def check_audio(data: str) -> None:
+    """Cheap checks the route runs before spending an AI call on the recording."""
+    if len(data) * 3 // 4 > MAX_AUDIO_BYTES:
+        raise BadAudio("That recording is too long. Keep it under two minutes, or type it instead.")
+    try:
+        audio = base64.b64decode(data, validate=True)
+    except (binascii.Error, ValueError):
+        raise BadAudio("We couldn’t read that recording. Try again, or type it instead.")
+    if not audio:
+        raise BadAudio("We didn’t catch any words. Try again, or type it instead.")
+
+
+def transcribe(audio_base64: str) -> str:
+    """The words in the recording, stripped (may be empty). Neither the audio nor
+    the words are logged or stored -- same rule as checked messages."""
+    settings = get_settings()
+    if not (settings.cloudflare_account_id and settings.cloudflare_api_token):
+        raise CheckFailed("Speech-to-text isn't configured (CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN).")
+    try:
+        res = httpx.post(
+            f"https://api.cloudflare.com/client/v4/accounts/{settings.cloudflare_account_id}/ai/run/{WHISPER_MODEL}",
+            headers={"Authorization": f"Bearer {settings.cloudflare_api_token}"},
+            json={"audio": audio_base64},
+            timeout=20.0,
+        )
+        res.raise_for_status()
+        return res.json()["result"]["text"].strip()
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as e:
+        raise CheckFailed(f"Speech-to-text failed: {e!r}") from e

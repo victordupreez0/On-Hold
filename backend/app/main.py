@@ -278,12 +278,26 @@ def ask_about_check(check_id: uuid.UUID, body: AskInput, user: User):
 
 
 class TranscribeInput(BaseModel):
-    audioUri: str
+    base64: str = Field(max_length=7_500_000)  # ~5MB decoded; ai.check_audio gives the friendly message
+    mimeType: str | None = Field(default=None, max_length=100)  # ignored: Whisper reads the container from the bytes
 
 
 @app.post("/transcribe")
 def transcribe(body: TranscribeInput, user: User):
-    return {"text": ai.transcribe(body.audioUri)}
+    """Speech to text for "Speak". The words go back into the editable text box; nothing is stored."""
+    try:
+        ai.check_audio(body.base64)
+    except ai.BadAudio as e:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+    _check_rate_limit(user.id)  # shares the hourly AI budget with checks and chat
+
+    try:
+        text = ai.transcribe(body.base64)
+    except ai.CheckFailed:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Couldn’t hear that right now. Try again, or type it instead.")
+    if not text:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "We didn’t catch any words. Try again, or type it instead.")
+    return {"text": text}
 
 
 # ---------- Reports ----------
