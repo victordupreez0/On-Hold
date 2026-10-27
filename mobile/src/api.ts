@@ -126,8 +126,10 @@ export async function check(input: CheckInput): Promise<CheckResult> {
   return request<CheckResult>('/checks', { method: 'POST', body: JSON.stringify(input) }, 45_000);
 }
 
-export async function transcribe(_audioUri: string): Promise<string> {
-  const { text } = await post<{ text: string }>('/transcribe', { audioUri: _audioUri });
+/** Speech to text: the recording goes up as base64, the words come back. Nothing is stored. */
+export async function transcribe(base64: string, mimeType?: string): Promise<string> {
+  // Longer than the default: up to two minutes of audio to upload, then the speech-to-text itself.
+  const { text } = await request<{ text: string }>('/transcribe', { method: 'POST', body: JSON.stringify({ base64, mimeType }) }, 45_000);
   return text;
 }
 
