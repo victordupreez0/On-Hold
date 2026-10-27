@@ -96,7 +96,8 @@ def _check_rate_limit(user_id: str):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    # The model is the one setting a host can get wrong without anything failing.
+    return {"status": "ok", "model": get_settings().anthropic_model}
 
 
 # ---------- Profile ----------

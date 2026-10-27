@@ -23,7 +23,7 @@ An AI scam checker for older South Africans. Paste a message, share a screenshot
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![Claude](https://img.shields.io/badge/Claude_Sonnet-D97757?style=for-the-badge&logo=claude&logoColor=white)
+![Claude](https://img.shields.io/badge/Claude_Haiku-D97757?style=for-the-badge&logo=claude&logoColor=white)
 ![Whisper on Cloudflare](https://img.shields.io/badge/Whisper_·_Workers_AI-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
 
@@ -312,7 +312,7 @@ uv run fastapi dev app/main.py  # http://localhost:8000, interactive docs at /do
 | `SUPABASE_SERVICE_ROLE_KEY` | Service-role key. The server uses it only to create and delete accounts, and for seeding. |
 | `DATABASE_URL` | Pooler connection string. On Vercel it must be the **transaction** pooler (port 6543): serverless instances freeze between requests and would hold the session pooler's 15 slots until every request hangs. |
 | `ANTHROPIC_API_KEY` | Claude |
-| `ANTHROPIC_MODEL` | Defaults to `claude-sonnet-5` |
+| `ANTHROPIC_MODEL` | Defaults to `claude-haiku-5-5` |
 | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` | Speech to text (a token from the "Workers AI" template) |
 | `CORS_ORIGINS` | Comma-separated origins allowed to call the API, e.g. `http://localhost:8081` |
 | `DEMO_HOOKS` | `true` makes any check containing `test-error` fail on purpose, to demo the failure screen |
@@ -370,7 +370,7 @@ Live now: the [website](https://onhold.pages.dev), the [app](https://onhold-app.
 | Auth | Supabase Auth (email + password), session kept with AsyncStorage | Real accounts and JWTs without building auth |
 | API | FastAPI (Python), psycopg 3 on the Supabase pooler | Typed validation with Pydantic, `/docs` for free, Python per the brief |
 | Database | Supabase Postgres, RLS on with no policies | The API is the only door |
-| AI: verdicts | Claude (`claude-sonnet-5`) with structured outputs | Schema-valid JSON every time; strong at reading manipulation and tone. 5× cheaper than Opus for a free safety app. |
+| AI: verdicts | Claude (`claude-haiku-5-5`) with structured outputs | Schema-valid JSON every time. Matched Claude Sonnet 5 on the accuracy test (29/29, no dangerous misses) at about 1/16th of the cost and a little faster, so a check costs about R0.005. |
 | AI: voice | Whisper (`whisper-large-v3-turbo`) on Cloudflare Workers AI | Claude doesn't take audio; free tier, server-side key |
 | Hosting | Vercel (API), Cloudflare Pages (app + website), Supabase (data) | Free tiers that fit each part |
 | CI | GitHub Actions | Tests, types and lint on every push |
@@ -402,7 +402,7 @@ The backend has route and AI-logic tests in pytest. The app has type checking, l
 | Guardian invites, consent toggles, Stop-verdict alerts | "Tell my family" from any verdict | Forgot-password flow |
 | Scam report create/read/update/delete, moderation queue | Admin activity feed and user history | App Store and Google Play release |
 | Community map (suburb heat, type filter) + Learn tab | Public website with a live demo | **Scam intelligence that doesn't depend on reports:** a daily AI job reads official sources (SABRIC, SASSA, SARS, RTIA, FSCA's warnings list, SAPS, bank fraud alerts) and drafts alerts and guides with the source attached; an admin approves them before they reach "Going around" and Learn. In-app reports stay as the local, near-you layer, since official sources rarely say which suburb. |
-| | Grey "Scam warning" outcome, and verdicts that cite official sources | An accuracy test set (real SA scams, genuine messages, warnings and fake warnings) run before any model or prompt change |
+| | Grey "Scam warning" outcome, verdicts that cite official sources, and an accuracy test set (`backend/scripts/eval.py`) | A bigger accuracy test set built from real messages people check (with consent) |
 
 ### Scope changes since the pitch
 
@@ -421,7 +421,7 @@ The backend has route and AI-logic tests in pytest. The app has type checking, l
 
 | Risk from the pitch | What happened | Status |
 |---|---|---|
-| **AI cost at scale** | Chose `claude-sonnet-5` over Opus (5× cheaper), plus an atomic per-user 30-calls/hour cap shared by checks, chat and voice. | Handled; revisit if usage grows |
+| **AI cost at scale** | Switched to `claude-haiku-5-5` once it matched Sonnet 5 on the accuracy test (about R0.005 a check), cached the prompt, and kept an atomic per-user 30-calls/hour cap shared by checks, chat and voice. | Handled; re-run the accuracy test before any model or prompt change |
 | **A wrong or overconfident verdict** | Structured output plus an explicit "never say certainly safe" rule, and "On Hold can make mistakes" in the UI. | Handled, not eliminable |
 | **Prompt injection via the scam text** | `<message>` tags with a treat-as-data instruction; an embedded instruction counts as a scam signal. | Handled ([ai.md](backend/docs/ai.md)) |
 | **Call detection isn't available in Expo Go** | Confirmed. Shipped manual call mode instead. | Remains |
