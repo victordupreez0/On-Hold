@@ -1,25 +1,51 @@
-<p align="center"><img src="mobile/assets/images/icon.png" width="96" alt="On Hold logo" /></p>
+<div align="center">
+
+<img src="mobile/assets/images/icon.png" width="112" alt="On Hold app icon" />
 
 # On Hold
 
-**Pause before you pay.** On Hold lets older South Africans, and anyone else, check a suspicious SMS, WhatsApp, email or phone call before they act on it. It gives a plain verdict (**Stop**, **Wait** or **Looks okay**) and says what to do next. If the person agrees, it alerts a family member when something looks like a scam. A community scam map and a Learn tab keep people aware of what's going around right now.
+### Pause before you pay.
 
-DV300 Theme 4 (AI-Driven Application), Social Impact / Accessibility. Victor du Preez (241250), Open Window, 2026.
+An AI scam checker for older South Africans. Paste a message, share a screenshot or say what the caller said,<br/>and get a plain **Stop**, **Wait** or **Looks okay**, with what to do next. Family hears about it only if you say so.
+
+[**Website**](https://onhold.pages.dev) &nbsp;·&nbsp; [**Try the app**](https://onhold-app.pages.dev) &nbsp;·&nbsp; [**Demo video**](#demo-video) &nbsp;·&nbsp; [**API routes**](backend/docs/api.md) &nbsp;·&nbsp; [**Bug log**](docs/testing.md)
 
 [![CI](https://github.com/victordupreez0/On-Hold/actions/workflows/ci.yml/badge.svg)](https://github.com/victordupreez0/On-Hold/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-70%20passing-0A9A4A?style=flat-square)
+![Screens](https://img.shields.io/badge/screens-31-1A1A1A?style=flat-square)
+![API](https://img.shields.io/badge/API%20routes-48-1A1A1A?style=flat-square)
+![Platforms](https://img.shields.io/badge/Android%20·%20iOS%20·%20Web-FFE45C?style=flat-square&labelColor=1A1A1A)
 
-| | |
-|---|---|
-| **Website, with a live demo phone** | https://onhold.pages.dev |
-| **The app, full screen (web build)** | https://onhold-app.pages.dev |
-| **API** (interactive route docs at `/docs`) | https://on-hold-api.vercel.app |
-| **Demonstration video** | *link added at hand-in* |
+![Expo](https://img.shields.io/badge/Expo_SDK_57-000020?style=for-the-badge&logo=expo&logoColor=white)
+![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Python](https://img.shields.io/badge/Python_3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Claude](https://img.shields.io/badge/Claude_Sonnet-D97757?style=for-the-badge&logo=claude&logoColor=white)
+![Whisper on Cloudflare](https://img.shields.io/badge/Whisper_·_Workers_AI-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
+![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
 
----
+<br/>
+
+<img src="docs/screenshots/home.jpg" width="19%" alt="Home" />
+<img src="docs/screenshots/check.jpg" width="19%" alt="Check something" />
+<img src="docs/screenshots/pause.jpg" width="19%" alt="Take a breath" />
+<img src="docs/screenshots/verdict.jpg" width="19%" alt="A Stop verdict on a screenshot of a fake SASSA SMS" />
+<img src="docs/screenshots/family-guardian.jpg" width="19%" alt="A guardian sees the alert" />
+
+<sub>A real run: a screenshot of a fake SASSA SMS goes in, Claude reads it, Marie gets a <b>Stop</b>, and Pieter (her son, who she agreed can see warnings) gets an alert.</sub>
+
+</div>
+
+<br/>
+
+DV300 Theme 4 (AI-Driven Application) · Social Impact and Accessibility · Victor du Preez (241250) · Open Window, 2026
 
 ## Contents
 
-[The problem](#the-problem) · [What it does](#what-it-does) · [Using the app](#using-the-app) · [How it works](#how-it-works) · [Run it yourself](#run-it-yourself) · [Deployment](#deployment) · [Technologies](#technologies) · [Security and privacy](#security-and-privacy) · [Testing](#testing) · [Project management](#project-management) · [Acknowledgements](#acknowledgements)
+[The problem](#the-problem) · [What it does](#what-it-does) · [Screenshots](#screenshots) · [Demo video](#demo-video) · [Using the app](#using-the-app) · [How it works](#how-it-works) · [Run it yourself](#run-it-yourself) · [Deployment](#deployment) · [Technologies](#technologies) · [Security and privacy](#security-and-privacy) · [Testing](#testing) · [Project management](#project-management) · [Acknowledgements](#acknowledgements)
 
 ## The problem
 
@@ -38,6 +64,61 @@ Scammers in South Africa go after the moment between reading a message and actin
 | **Learn** | "Going around near you" from the last 14 days of approved reports, plus 9 sourced guides to the common SA scams. |
 | **Admin panel** | A dashboard (totals, active people this week, the 14-day trend), a live **activity feed** of what everyone is doing, **users** (last active, history, family links; add, edit, change role, delete), a **moderation queue** (approve, or reject with a reason the reporter sees), and full CRUD on Learn guides and suburbs. |
 | **Accessibility** | Simple mode (one giant Check button plus "Call Pieter"), Atkinson Hyperlegible Next, 48 pt touch targets, verdicts always icon + word + colour, screen-reader labels throughout. |
+
+## Screenshots
+
+<table>
+  <tr>
+    <th colspan="3">Check: the AI feature</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/check.jpg" width="230" alt="Check something" /><br/><sub>Paste, screenshot or speak</sub></td>
+    <td align="center"><img src="docs/screenshots/pause.jpg" width="230" alt="Take a breath" /><br/><sub>A deliberate 3-second pause</sub></td>
+    <td align="center"><img src="docs/screenshots/verdict.jpg" width="230" alt="Stop verdict" /><br/><sub>The verdict and what to do now</sub></td>
+  </tr>
+  <tr>
+    <th colspan="3">Every day</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/home.jpg" width="230" alt="Home" /><br/><sub>Home: recent checks, one tap to check</sub></td>
+    <td align="center"><img src="docs/screenshots/map.jpg" width="230" alt="Scam map" /><br/><sub>Community scam map, by suburb</sub></td>
+    <td align="center"><img src="docs/screenshots/learn.jpg" width="230" alt="Learn" /><br/><sub>What's going around, and how to spot it</sub></td>
+  </tr>
+  <tr>
+    <th colspan="3">Family</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/family-sharing.jpg" width="230" alt="Sharing controls" /><br/><sub>Marie chooses what Pieter can see</sub></td>
+    <td align="center"><img src="docs/screenshots/family-guardian.jpg" width="230" alt="Guardian view" /><br/><sub>Pieter gets her Stop alerts</sub></td>
+    <td align="center"><img src="docs/screenshots/welcome.jpg" width="230" alt="Welcome" /><br/><sub>Welcome</sub></td>
+  </tr>
+  <tr>
+    <th colspan="3">Admin panel</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/admin-dashboard.jpg" width="230" alt="Admin dashboard" /><br/><sub>Dashboard</sub></td>
+    <td align="center"><img src="docs/screenshots/admin-activity.jpg" width="230" alt="Activity feed" /><br/><sub>Who's doing what, live</sub></td>
+    <td align="center"><img src="docs/screenshots/admin-moderation.jpg" width="230" alt="Moderation queue" /><br/><sub>Approve or reject reports</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/admin-users.jpg" width="230" alt="Users" /><br/><sub>Users, most recently active first</sub></td>
+    <td align="center"><img src="docs/screenshots/admin-person.jpg" width="230" alt="A person's page" /><br/><sub>One person's history and family</sub></td>
+    <td></td>
+  </tr>
+</table>
+
+## Demo video
+
+<!--
+  To finish this section:
+  1. Upload the video to YouTube as "Unlisted".
+  2. Copy the video id: the part after "youtu.be/" or after "watch?v=" in its link.
+  3. Replace both VIDEO_ID below with it, then delete this comment.
+-->
+
+[![Watch the On Hold demo](https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg)](https://youtu.be/VIDEO_ID)
+
+A 6-minute walkthrough: signing in, checking a message, a screenshot and a call, a Stop reaching family, the map and Learn, and the admin panel (dashboard, activity, users, moderation).
 
 ## Using the app
 
@@ -273,6 +354,10 @@ cd mobile && npx tsc --noEmit && npx expo lint && npx jest
 | Android / iOS | Expo EAS | `eas build -p android --profile preview` (profiles in [mobile/eas.json](mobile/eas.json)). Store listing is next: "coming soon" on the website. |
 
 ## Technologies
+
+<p>
+  <img src="https://skillicons.dev/icons?i=react,ts,python,fastapi,postgres,supabase,cloudflare,vercel,githubactions&perline=9" alt="React Native, TypeScript, Python, FastAPI, PostgreSQL, Supabase, Cloudflare, Vercel, GitHub Actions" />
+</p>
 
 | Layer | Choice | Why |
 |---|---|---|

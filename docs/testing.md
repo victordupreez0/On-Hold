@@ -19,6 +19,8 @@ Every bug found and fixed, newest first. Each fix is its own commit, so the comm
 |---|---|---|---|
 | 27 Oct | The "Speak" button returned the same canned transcript whatever was said, so it could even produce a Stop and a family alert for a call that never happened | Final review against the brief | `77054fd`, `c6d7290`: real speech-to-text (Whisper on Cloudflare Workers AI). Unit-tested; one live recording still to run once the Cloudflare keys are set. |
 | 27 Oct | Admins couldn't see who was using the app or what they were doing; the activity list had no names and covered only three event types | Final review against the brief | `2fb37eb`, `c851588` |
+| 27 Oct | Some demo reports read "SMS about…" but were filed as phone calls: the seed picked the story and the channel separately | Taking README screenshots | `bb9edc0` |
+| 27 Oct | Learn said "1 reports in your area" | Taking README screenshots | `4a32d79` |
 | 27 Oct | CI's type check failed on every clean checkout (a generated, gitignored Expo declaration file only exists on machines that ran the dev server) | Reproduced on a clean worktree | `5e4a501` |
 | 27 Oct | The admin demo account used the password published in the README, so once deployed anyone could administer the app | Review of the public demo | `063b951`: admin password comes from a private setting |
 | 27 Oct | The admin hub (dashboard, users, guides, suburbs) had no way in from the app; Home and Settings linked only to the reports queue | Final review | `0a9dd4e` |
