@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     supabase_service_role_key: str
     database_url: str
     anthropic_api_key: str
-    anthropic_model: str = "claude-sonnet-5"
+    anthropic_model: str = "claude-haiku-5-5"
     # Speech-to-text (Workers AI Whisper). Optional: without them "Speak" answers 503 and typing still works.
     cloudflare_account_id: str = ""
     cloudflare_api_token: str = ""

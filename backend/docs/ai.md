@@ -6,9 +6,13 @@ a grader can't see by reading the route alone.
 
 ## Model
 
-`claude-sonnet-5` by default (`ANTHROPIC_MODEL` in `.env`), chosen for cost on
-a free-to-use safety app with no funding; revisit once the AI budget is
-decided. Called through `client.messages.parse()` with a Pydantic
+`claude-haiku-5-5` by default (`ANTHROPIC_MODEL` in `.env`). It replaced
+`claude-sonnet-5` on 27 Oct after both scored 29/29 on the accuracy test
+(`backend/scripts/eval.py`: 17 scams including fake "official warnings", 6
+genuine messages, 4 genuine warnings, a borderline call and a screenshot),
+with no dangerous misses and no false alarms. Haiku was a little faster (3.0s
+against 3.5s on average) and about 16 times cheaper: $0.00025 a check against
+$0.0039. Re-run that test before changing the model or the prompt. Called through `client.messages.parse()` with a Pydantic
 `output_format` (structured outputs), not a hand-rolled JSON prompt --
 the API guarantees schema-valid JSON back, so there's no "Claude wrapped the
 JSON in prose" failure mode to handle.

@@ -46,7 +46,7 @@ Expo app (mobile/) ──supabase-js──▶ Supabase Auth
     │ Bearer JWT                         (RLS on every table, zero policies —
     ▼                                     the API is the only door in)
 FastAPI (backend/) ──psycopg──▶ Supabase Postgres
-    └──anthropic──▶ Claude (claude-sonnet-5, structured output)
+    └──anthropic──▶ Claude (claude-haiku-5-5, structured output)
 ```
 Every table's RLS is on with no policies. The API's pooler connection is the only thing that can read or write data. Admin routes additionally call the Supabase Auth admin API (service-role key) for one thing: deleting a user's auth account (not just their profile row) when an admin removes them.
 

@@ -4,9 +4,10 @@
 
 | Layer | What | Run it |
 |---|---|---|
-| API | 54 route and AI-logic tests with pytest: owner scoping, the AI rate limit, role checks, last-admin protection, input validation, Claude's output validation, admin create/edit, the activity feed, transcription | `cd backend && uv run pytest` |
+| API | 56 route and AI-logic tests with pytest: owner scoping, the AI rate limit, role checks, last-admin protection, input validation, Claude's output validation, admin create/edit, the activity feed, transcription | `cd backend && uv run pytest` |
 | App | Type checking, lint, and 16 jest tests on the pure logic (report validation, time formatting) | `cd mobile && npx tsc --noEmit && npx expo lint && npx jest` |
 | CI | Both of the above on every push and pull request, with no secrets available | [.github/workflows/ci.yml](../.github/workflows/ci.yml) |
+| AI accuracy | 29 labelled messages through the real model: 17 scams (including fake "official warnings"), 6 genuine messages, 4 genuine warnings, a borderline call and a screenshot. "Dangerous" means a scam called Looks okay or Scam warning. On 27 Oct, Claude Sonnet 5 and Claude Haiku 5.5 both scored 29/29 with none dangerous, so the app moved to Haiku. Costs a few cents, so it isn't in CI. | `cd backend && uv run python -m scripts.eval` |
 | Live | Every backend change was checked against the real hosted database: migrations pushed, real demo accounts signed in through Supabase Auth, and each new or changed route called for real. Throwaway accounts made for this were deleted afterwards. | — |
 
 Mocked tests can't catch everything. Live checks found several bugs the unit tests missed, such as an ambiguous SQL column, a parameter Postgres couldn't type, and a token rejected because two clocks disagreed. Those bugs are in the log below.

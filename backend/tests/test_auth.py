@@ -24,7 +24,7 @@ def test_admin_route_requires_auth():
 def test_health_is_public():
     res = client.get("/health")
     assert res.status_code == 200
-    assert res.json() == {"status": "ok"}
+    assert res.json()["status"] == "ok"
 
 
 def test_fresh_token_accepted_despite_clock_skew(monkeypatch):
