@@ -1,3 +1,4 @@
+import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams, usePathname } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -40,7 +41,9 @@ function Result({ check }: { check: Check }) {
   const [sending, setSending] = useState(false);
   const [told, setTold] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
-  const risky = check.verdict !== 'safe';
+  const risky = check.verdict === 'stop' || check.verdict === 'wait';
+  const guides = useLoad(api.listExplainers);
+  const guide = check.scamType ? guides.data?.find((g) => g.scamType === check.scamType) : undefined;
 
   const tellFamily = async () => {
     setSending(true);
@@ -132,6 +135,33 @@ function Result({ check }: { check: Check }) {
         )}
       </View>
 
+      {guide && (
+        <Pressable
+          onPress={() => router.push({ pathname: fromHistory ? '/guide/[slug]' : '/check/guide/[slug]', params: { slug: guide.slug } })}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.guide, pressed && { transform: [{ scale: 0.98 }] }]}>
+          <Feather name="book-open" size={20} color={colors.ink} />
+          <T v="label" style={{ flex: 1 }}>
+            How this scam takes your money
+          </T>
+          <Feather name="chevron-right" size={22} color={colors.inkSoft} />
+        </Pressable>
+      )}
+
+      {check.sources.length > 0 && (
+        <View style={{ gap: space.xs }}>
+          <T v="overline" color={colors.inkSoft}>
+            Official advice
+          </T>
+          {check.sources.map((s) => (
+            <Pressable key={s.url} onPress={() => Linking.openURL(s.url)} accessibilityRole="link" style={styles.source}>
+              <Feather name="external-link" size={16} color={colors.inkSoft} />
+              <T style={{ textDecorationLine: 'underline' }}>{s.name}</T>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       <ChatEntry checkId={check.id} fromHistory={fromHistory} />
 
       <View style={{ gap: space.sm + 2 }}>
@@ -195,6 +225,8 @@ function ChatEntry({ checkId, fromHistory }: { checkId: string; fromHistory: boo
 
 const styles = StyleSheet.create({
   sayThis: { backgroundColor: colors.ink, borderRadius: radius.lg, padding: space.lg - 4, gap: space.sm },
+  guide: { flexDirection: 'row', alignItems: 'center', gap: space.sm + 4, minHeight: minTouch, paddingHorizontal: space.md, borderRadius: radius.lg, backgroundColor: colors.grey },
+  source: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: minTouch },
   step: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
   num: {
     width: 32,

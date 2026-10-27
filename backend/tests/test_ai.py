@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from pydantic import ValidationError
 
 from app import ai
 
@@ -162,6 +163,30 @@ def test_over_long_output_is_clipped_not_failed(monkeypatch):
     monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
     result = ai.run_check("message", "some text", None)
     assert (result["confidence"], len(result["headline"]), result["reasons"], result["nextSteps"]) == (1.0, 120, list("abc"), list("wxy"))
+
+
+def test_scam_warning_cites_vetted_sources_and_gets_no_script(monkeypatch):
+    """A warning poster about a scam is "info": never a call script, and its sources come
+    from the vetted list as name + link (repeats dropped), never from the model's own text."""
+    sent = {}
+    warning = _verdict(verdict="info", scam_type="aarto", is_call=True, say_this="hang up", sources=["aarto", "sabric", "aarto"])
+
+    class FakeMessages:
+        def parse(self, **kwargs):
+            sent.update(kwargs)
+            return _stub_response(warning)
+
+    monkeypatch.setattr(ai, "_client", lambda: SimpleNamespace(messages=FakeMessages()))
+    result = ai.run_check("call", "a poster warning about fake traffic fines", None)
+
+    assert result["verdict"] == "info" and result["sayThis"] is None
+    assert result["sources"] == [
+        {"name": "AARTO, official traffic fines", "url": "https://www.aarto.gov.za/"},
+        {"name": "SABRIC, the banks’ fraud centre", "url": "https://www.sabric.co.za/"},
+    ]
+    assert sent["system"][0]["cache_control"] == {"type": "ephemeral"}  # the ~1.5k-token prompt is cached
+    with pytest.raises(ValidationError):  # an invented source can't get through the schema
+        _verdict(sources=["my-blog"])
 
 
 @pytest.mark.parametrize("stop_reason", ["refusal", "max_tokens"])

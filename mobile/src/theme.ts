@@ -31,11 +31,13 @@ export function heatRgba(t: number, alpha: number) {
   return `rgba(${r}, ${g}, ${bl}, ${alpha})`;
 }
 
-// Contrast: white on stop 4.7:1, ink on wait 9:1, white on safe 3.7:1 (large bold text only).
+// Contrast: white on stop 4.7:1, ink on wait 9:1, white on safe 3.7:1 (large bold text only), white on info 7.6:1.
+// info is grey, never green: a warning poster about a scam must not read as "that kind of message is fine".
 export const verdictStyle = {
   stop: { bg: colors.stop, fg: colors.white, tint: colors.stopTint, word: 'Stop', icon: 'octagon' },
   wait: { bg: colors.wait, fg: colors.ink, tint: colors.waitTint, word: 'Wait', icon: 'alert-triangle' },
   safe: { bg: colors.safe, fg: colors.white, tint: colors.safeTint, word: 'Looks okay', icon: 'check-circle' },
+  info: { bg: colors.inkSoft, fg: colors.white, tint: colors.grey, word: 'Scam warning', icon: 'info' },
 } as const;
 
 export const font = {
