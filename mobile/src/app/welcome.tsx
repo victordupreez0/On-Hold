@@ -6,6 +6,8 @@ import { Logo } from '@/components/Logo';
 import { Button, T } from '@/components/ui';
 import { colors, space } from '@/theme';
 
+const DEMO = process.env.EXPO_PUBLIC_DEMO_ACCOUNTS === 'true';
+
 export default function Welcome() {
   return (
     <SafeAreaView style={styles.page} edges={['top', 'bottom']}>
@@ -23,8 +25,10 @@ export default function Welcome() {
             know if you want us to.
           </T>
           <View style={{ gap: space.sm, marginTop: space.sm }}>
+            {/* Public web demo: sign-in lists Marie and Pieter, so "Try the demo" takes the sign-in button's place. */}
+            {DEMO && <Button label="Try the demo" icon="play" onPress={() => router.push('/sign-in')} />}
             <Button label="Get started" variant="dark" onPress={() => router.push('/sign-up')} />
-            <Button label="I already have an account" variant="ghost" onPress={() => router.push('/sign-in')} />
+            {!DEMO && <Button label="I already have an account" variant="ghost" onPress={() => router.push('/sign-in')} />}
           </View>
         </View>
       </View>
