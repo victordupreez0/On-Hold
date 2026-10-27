@@ -8,7 +8,7 @@
 
 An AI scam checker for older South Africans. Paste a message, share a screenshot or say what the caller said,<br/>and get a plain **Stop**, **Wait** or **Looks okay**, with what to do next. Family hears about it only if you say so.
 
-[**Website**](https://onhold.pages.dev) &nbsp;·&nbsp; [**Try the app**](https://onhold-app.pages.dev) &nbsp;·&nbsp; [**Demo video**](#demo-video) &nbsp;·&nbsp; [**API routes**](backend/docs/api.md) &nbsp;·&nbsp; [**Bug log**](docs/testing.md)
+[**Website**](https://onhold.pages.dev) &nbsp;·&nbsp; [**Try the app**](https://onhold-app.pages.dev) &nbsp;·&nbsp; [**Demo video**](#demo-video) &nbsp;·&nbsp; [**Live API**](https://on-hold-ashen.vercel.app/docs) &nbsp;·&nbsp; [**API routes**](backend/docs/api.md) &nbsp;·&nbsp; [**Bug log**](docs/testing.md)
 
 [![CI](https://github.com/victordupreez0/On-Hold/actions/workflows/ci.yml/badge.svg)](https://github.com/victordupreez0/On-Hold/actions/workflows/ci.yml)
 ![Tests](https://img.shields.io/badge/tests-70%20passing-0A9A4A?style=flat-square)
@@ -345,11 +345,13 @@ cd mobile && npx tsc --noEmit && npx expo lint && npx jest
 
 ## Deployment
 
+Live now: the [website](https://onhold.pages.dev), the [app](https://onhold-app.pages.dev) and the [API](https://on-hold-ashen.vercel.app/docs) (its `/docs` page lets you try every route).
+
 | Part | Where | How |
 |---|---|---|
 | Database + sign-in | Supabase | `supabase db push` (above) |
 | API | Vercel, free tier | Import the GitHub repo, set the **root directory** to `backend`, and add the environment variables above. Vercel finds `app/main.py` and installs from `pyproject.toml`/`uv.lock` by itself. Set `CORS_ORIGINS` to the app's URL. |
-| App (web build) | Cloudflare Pages | `cd mobile && EXPO_PUBLIC_API_URL=<the API's URL> EXPO_PUBLIC_DEMO_ACCOUNTS=true npm run export:web`, then `npx wrangler pages deploy dist --project-name onhold-app`. The demo flag shows Marie and Pieter (never admin) on sign-in. |
+| App (web build) | Cloudflare Pages | `cd mobile && EXPO_PUBLIC_API_URL=https://on-hold-ashen.vercel.app EXPO_PUBLIC_DEMO_ACCOUNTS=true npm run export:web`, then `npx wrangler pages deploy dist --project-name onhold-app`. The demo flag shows Marie and Pieter (never admin) on sign-in. The first time, create the project with `npx wrangler pages project create onhold-app --production-branch main --force` (without `--force`, newer wrangler tries to move it to Workers and fails). |
 | Website | Cloudflare Pages | `npx wrangler pages deploy website --project-name onhold` |
 | Android / iOS | Expo EAS | `eas build -p android --profile preview` (profiles in [mobile/eas.json](mobile/eas.json)). Store listing is next: "coming soon" on the website. |
 

@@ -5,7 +5,16 @@ It deploys as two Cloudflare Pages projects: `onhold` (this folder) and `onhold-
 
 ## Deploy
 
-Run these from the repo root after `npx wrangler login`. The first deploy of each project creates it; answer `main` when it asks for the production branch.
+Live at https://onhold.pages.dev (website) and https://onhold-app.pages.dev (app). Run these from the repo root after `npx wrangler login`.
+
+The first time only, create both projects. `--force` keeps them on Pages: without it, newer wrangler tries to move them to Workers and fails.
+
+```bash
+npx wrangler pages project create onhold --production-branch main --force
+npx wrangler pages project create onhold-app --production-branch main --force
+```
+
+Then, for every deploy:
 
 ```bash
 # 1. The landing page
@@ -13,13 +22,13 @@ npx wrangler pages deploy website --project-name onhold
 
 # 2. The app in the phone (bash; values are inlined into the bundle at export time)
 cd mobile
-EXPO_PUBLIC_API_URL=https://<the-vercel-api-url> EXPO_PUBLIC_DEMO_ACCOUNTS=true npm run export:web
+EXPO_PUBLIC_API_URL=https://on-hold-ashen.vercel.app EXPO_PUBLIC_DEMO_ACCOUNTS=true npm run export:web
 cd ..
 npx wrangler pages deploy mobile/dist --project-name onhold-app
 ```
 
 In PowerShell, set the variables first:
-`$env:EXPO_PUBLIC_API_URL="https://<the-vercel-api-url>"; $env:EXPO_PUBLIC_DEMO_ACCOUNTS="true"; npm run export:web`
+`$env:EXPO_PUBLIC_API_URL="https://on-hold-ashen.vercel.app"; $env:EXPO_PUBLIC_DEMO_ACCOUNTS="true"; npm run export:web`
 
 | Export-time variable | Value |
 |---|---|
@@ -39,5 +48,5 @@ If Cloudflare gives a different URL (the project name was taken, or a custom dom
 
 ## Before sharing the link
 
-Everyone who opens the demo shares the Marie and Pieter accounts. If someone deletes one in Settings, `cd backend && uv run python -m scripts.seed` recreates it.
-The admin account's password is the same published `onhold-demo`. Hiding its chip doesn't stop someone typing it, so change it before the link goes public.
+Everyone who opens the demo shares the Marie and Pieter accounts. Demo accounts can't be deleted, but visitors' checks and reports pile up: `cd backend && uv run python -m scripts.seed` resets everything.
+The admin account has its own password (`ADMIN_PASSWORD` in `backend/.env`, applied by the seed), not the published `onhold-demo`.
