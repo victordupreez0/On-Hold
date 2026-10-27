@@ -250,7 +250,8 @@ def transcribe(audio_base64: str) -> str:
         res = httpx.post(
             f"https://api.cloudflare.com/client/v4/accounts/{settings.cloudflare_account_id}/ai/run/{WHISPER_MODEL}",
             headers={"Authorization": f"Bearer {settings.cloudflare_api_token}"},
-            json={"audio": audio_base64},
+            # vad_filter skips stretches with no speech; without it, silence comes back as "You".
+            json={"audio": audio_base64, "vad_filter": True},
             timeout=20.0,
         )
         res.raise_for_status()
