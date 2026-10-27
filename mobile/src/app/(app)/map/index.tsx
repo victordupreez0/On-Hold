@@ -94,7 +94,7 @@ function AreaRow({ area, max, mine, selected, onPress }: { area: AreaStat; max: 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${area.name}${mine ? ', your area' : ''}: ${area.count} reports, mostly ${SCAM_LABELS[area.topType]}`}
+      accessibilityLabel={`${area.name}${mine ? ', your area' : ''}: ${area.count} ${area.count === 1 ? 'report' : 'reports'}, mostly ${SCAM_LABELS[area.topType]}`}
       style={({ pressed }) => [styles.row, selected && styles.rowOn, pressed && { backgroundColor: colors.grey }]}>
       <View style={{ flex: 1, gap: 6 }}>
         <View style={styles.rowTop}>

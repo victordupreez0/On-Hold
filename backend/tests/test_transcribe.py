@@ -48,7 +48,7 @@ def test_transcribes_through_whisper_and_spends_one_ai_call(monkeypatch, ai_call
     url, kwargs = calls[0]
     assert url == "https://api.cloudflare.com/client/v4/accounts/acct/ai/run/@cf/openai/whisper-large-v3-turbo"
     assert kwargs["headers"]["Authorization"] == "Bearer tok"
-    assert kwargs["json"] == {"audio": AUDIO}
+    assert kwargs["json"] == {"audio": AUDIO, "vad_filter": True}
     assert ai_calls == ["u1"]
 
 

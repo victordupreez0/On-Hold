@@ -8,22 +8,25 @@ Status against it, item by item, is in the walkthrough the user has (claude.ai a
 Done and merged into `dev` (not pushed, not on `main` yet):
 - **Realistic demo data**: `scripts/seed.py` rebuilds all `@onhold.test` data relative to now on every run
   (31 people, ~110 checks, ~130 reports, family links, alerts). Run it on demo morning. Admin password comes
-  from `ADMIN_PASSWORD` in `backend/.env` (not set yet -- until then admin still uses the public `onhold-demo`).
+  from `ADMIN_PASSWORD` in `backend/.env` (set; `onhold-demo` no longer opens the admin account).
 - **Admin insight**: `profiles.last_seen_at` (stamped in `auth.py`), `GET /admin/activity`, richer
   `GET /admin/users/{id}`, `POST /admin/users`, `PATCH` edits name/phone/suburb/role, reporter names on reports.
   App: Activity screen, person page, add-a-person, paging. The admin hub is now reachable (it wasn't).
-- **Voice is real in code** (Whisper on Cloudflare Workers AI) but **never live-tested**: needs
-  `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` in `backend/.env`. Unknown: whether Whisper accepts the m4a
-  phones record and Chrome's webm; whether silence produces invented words (`vad_filter` is the fix).
+- **Voice is real** (Whisper on Cloudflare Workers AI), tested live locally and on Vercel with m4a, webm and
+  wav. Silence came back as "You"; `vad_filter` fixed it (live on Vercel once `main` is pushed).
 - **Website** (`website/`) with the live app in a phone frame; `npm run export:web` builds the app for
   Cloudflare Pages (see `website/README.md` for the two deploy traps it works around).
 - **CI fix**: the type check failed on every clean checkout (gitignored `expo-env.d.ts`); fixed, not yet seen green.
 - **Docs**: README rewritten against the brief, `backend/docs/api.md` (48 routes), `docs/testing.md` (bug log).
 
+**Live** (27 Oct): website https://onhold.pages.dev, app https://onhold-app.pages.dev, API
+https://on-hold-ashen.vercel.app (Vercel builds from GitHub; the Pages sites are deployed with `wrangler`, see
+`website/README.md`). Vercel's `CORS_ORIGINS` must include `https://onhold-app.pages.dev`.
+
 Still open, mostly the user's: lecturer as repo collaborator, 5-8 min demo video (link in README),
-week-15 peer feedback written up, merge `dev` → `main` and push, deploy (API on Vercel with root `backend`;
-app + website on Cloudflare Pages), Supabase Site URL, an outside tester, a sprint board (`gh` is still
-logged in as `duckstackdigital`). The sections below are from 14 Oct; item 6 (voice) is now done in code.
+week-15 peer feedback written up, merge `dev` → `main` and push, Supabase Site URL, an outside tester,
+a sprint board (`gh` is still logged in as `duckstackdigital`). The sections below are from 14 Oct;
+item 2 (deployment) and item 6 (voice) are now done.
 
 
 Written 14 Oct 2026 (updated end of session 6, same day) for whichever agent picks this up next. Read this before touching anything — it'll save you re-deriving a lot of state. The rest of the README is still accurate and worth reading too (stack, run instructions, scope changes, risks table); this file is the "what's actually left" layer on top of it.
