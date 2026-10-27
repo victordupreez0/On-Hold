@@ -595,7 +595,9 @@ def main():
 
 
 # The Learn tab's content, DB-backed and admin-editable. Only missing guides are
-# added, so an admin's edits survive a reseed.
+# added, and a plan only filled in where it's blank, so an admin's edits survive a reseed.
+# counting_on and playbook show the scam from the scammer's side: the weakness they
+# use, and how the money gets from you to them.
 EXPLAINERS = [
     {
         "slug": "bank-fraud-call",
@@ -604,6 +606,13 @@ EXPLAINERS = [
         "summary": "Someone phones pretending to be your bank and says your money is in danger.",
         "example_channel": "call",
         "example_text": "“Good afternoon, this is Thandi from the fraud department. We’ve stopped a payment of R4,800. To reverse it, read me the code we just sent and approve the notification in your app.”",
+        "counting_on": "Your trust in your bank, and your panic when you hear your savings are being stolen.",
+        "playbook": [
+            "They get hold of some of your details first, from data leaks or earlier scams, so they sound like your real bank.",
+            "They say a thief is taking your money right now, because a frightened person does what they’re told.",
+            "They ask you to read out a code or approve something in your app. That code is what lets them pay money out or add their phone to your account.",
+            "Your money goes to accounts they control and is moved on within minutes, so it’s very hard to get back.",
+        ],
         "signs": [
             "They ask for an OTP, PIN or password. Banks never do.",
             "They want you to “approve” something in your banking app to stop fraud.",
@@ -625,6 +634,13 @@ EXPLAINERS = [
         "summary": "Messages or calls about your grant or SRD payment that ask for your details or a fee.",
         "example_channel": "sms",
         "example_text": "SASSA: Your SRD R370 payment is ON HOLD. Update your details within 24hrs to avoid cancellation: srd-sassa-pay.co.za",
+        "counting_on": "How much you need your grant, and your fear of losing it.",
+        "playbook": [
+            "They send thousands of messages just before payment dates, when people are already watching for their money.",
+            "They say your payment is on hold, because fear of losing a grant makes people act before they think.",
+            "The link opens a fake SASSA page that takes your ID number, your banking details or a “fee”.",
+            "With your details they can have your grant paid into their account, or borrow money in your name.",
+        ],
         "signs": [
             "SASSA never charges a fee to apply or to “unlock” a payment.",
             "The link isn’t srd.sassa.gov.za.",
@@ -646,6 +662,13 @@ EXPLAINERS = [
         "summary": "An email or SMS says you’re owed a tax refund and must “claim” it through a link.",
         "example_channel": "email",
         "example_text": "SARS eFiling: You are eligible for a refund of R3,214.60. Verify your banking details within 48 hours to receive payment.",
+        "counting_on": "The pleasure of being owed money, and the worry of missing a deadline.",
+        "playbook": [
+            "They copy SARS’s logo and wording, so the email looks official.",
+            "They promise a refund, because people expecting money drop their guard.",
+            "The link opens a fake eFiling page that asks for your banking details and passwords.",
+            "They use them to empty your account, or to take over your eFiling and have real refunds paid to themselves.",
+        ],
         "signs": [
             "SARS won’t ask for your personal, tax, banking or eFiling details in an email.",
             "Real refunds go into the account already on your SARS profile.",
@@ -666,6 +689,13 @@ EXPLAINERS = [
         "summary": "An SMS or WhatsApp says you have a traffic fine and offers 50% off if you pay today.",
         "example_channel": "sms",
         "example_text": "AARTO: Outstanding fine R500 for vehicle CA 123-456. Pay within 24hrs for 50% discount or your licence disc will be blocked.",
+        "counting_on": "Your wish to stay out of trouble, and a discount that’s hard to say no to.",
+        "playbook": [
+            "Some even know your real number plate, so the fine feels genuine.",
+            "They offer 50% off for paying today, because a deadline stops you from checking.",
+            "The payment page is fake. You type in your card number, expiry date and the code on the back.",
+            "It was never about R500: they now have your card, and use it for bigger payments until you stop it.",
+        ],
         "signs": [
             "A big discount for paying right now.",
             "Threats to block your licence or vehicle disc.",
@@ -687,6 +717,13 @@ EXPLAINERS = [
         "summary": "A WhatsApp from an unknown number pretends to be your child or grandchild and asks for money.",
         "example_channel": "whatsapp",
         "example_text": "Hi Ma, it’s me. My phone fell in the water so this is my new number. I need to pay a supplier urgently, can you send R2,500? I’ll pay you back tomorrow ❤️",
+        "counting_on": "Your love for your family being stronger than your doubt.",
+        "playbook": [
+            "They pick parents and grandparents, because you’d do anything for your children.",
+            "A “new number” explains why you don’t know it, and “I can’t talk now” stops you hearing that it isn’t their voice.",
+            "They need money urgently and may ask you to keep it quiet, so nobody can stop you.",
+            "You pay into an account they control. The money is moved on within minutes, and money you sent yourself is very hard to get back.",
+        ],
         "signs": [
             "A new number you’ve never seen.",
             "They can’t talk on the phone “right now”.",
@@ -707,6 +744,13 @@ EXPLAINERS = [
         "summary": "An SMS says your parcel is waiting and you must pay a small fee to get it.",
         "example_channel": "sms",
         "example_text": "Parcel notice: We could not deliver your package. Pay R28.50 redelivery fee within 12 hours or it will be returned.",
+        "counting_on": "A small amount not seeming worth checking.",
+        "playbook": [
+            "They send the same SMS to thousands of people, knowing many really are waiting for a parcel.",
+            "The fee is tiny, so paying feels harmless and quicker than checking.",
+            "The payment page takes your full card details, and sometimes the code your bank sends you.",
+            "They never wanted R28. They use your card for much bigger payments, as fast as they can.",
+        ],
         "signs": [
             "A tiny fee. They want your card details, not R28.",
             "You weren’t expecting a parcel.",
@@ -727,6 +771,13 @@ EXPLAINERS = [
         "summary": "A stranger offers you money to like videos or rate products, then asks you to pay in.",
         "example_channel": "whatsapp",
         "example_text": "Hello! We are hiring part-time. Earn R800–R3,000 a day by liking YouTube videos. No experience needed. Reply YES to start.",
+        "counting_on": "Your need for extra money, and your wish to win back what you’ve already paid.",
+        "playbook": [
+            "They offer easy money for liking videos or rating products, so it feels too simple to be risky.",
+            "They really do pay you a few times. It costs them a little and buys your trust.",
+            "Then bigger tasks need a “deposit” first, and each one is bigger than the last.",
+            "When you try to take your money out, there’s always another fee. Then they stop answering, and the money is gone.",
+        ],
         "signs": [
             "Easy money for simple tasks.",
             "They pay you a little first to win your trust.",
@@ -743,6 +794,13 @@ EXPLAINERS = [
         "summary": "Someone gets you to approve a debit order you never agreed to.",
         "example_channel": "call",
         "example_text": "“Hi, I’m calling about your funeral cover upgrade. You’ll get an SMS from your bank in a moment. Please just approve it so we can confirm.”",
+        "counting_on": "A friendly voice, and you tapping “approve” without reading.",
+        "playbook": [
+            "They phone about funeral cover, a policy “upgrade” or a refund, so the call sounds routine.",
+            "They tell you an SMS is coming and to just approve it, so you don’t read what it says.",
+            "Approving is the same as signing a debit order. Your bank treats it as your agreement, so it’s harder to dispute.",
+            "Money leaves your account every month until you notice and stop it.",
+        ],
         "signs": [
             "You’re asked to approve a debit order you didn’t set up.",
             "The company, amount or date doesn’t match anything you signed.",
@@ -763,6 +821,13 @@ EXPLAINERS = [
         "summary": "Someone promises big, fast returns from crypto, forex or an investment club, then asks you to pay in.",
         "example_channel": "whatsapp",
         "example_text": "Welcome to the Gold Crypto Club 💰 Our members earn 30% every week. Start with only R1,000 today. Spots close tonight!",
+        "counting_on": "The hope of easy money, and the fear of missing out.",
+        "playbook": [
+            "They show screenshots of big profits and happy “members”, many of them fake.",
+            "Your first deposit grows on a dashboard they control. The numbers are made up, to get you to put in more.",
+            "Early members are paid with newer members’ money, so they push you to bring in friends and family.",
+            "When you try to take money out, they ask for “tax” or a “release fee”. Then the group and your money disappear.",
+        ],
         "signs": [
             "Guaranteed returns, especially big ones, fast.",
             "Pressure to join before “spots close”.",
@@ -782,9 +847,12 @@ EXPLAINERS = [
 
 def seed_explainers():
     many(
-        """insert into explainers (slug, scam_type, title, summary, example_channel, example_text, signs, what_to_do, source_name, source_url)
-           values (%(slug)s, %(scam_type)s, %(title)s, %(summary)s, %(example_channel)s, %(example_text)s, %(signs)s, %(what_to_do)s, %(source_name)s, %(source_url)s)
-           on conflict (slug) do nothing""",
+        """insert into explainers (slug, scam_type, title, summary, example_channel, example_text, counting_on, playbook,
+               signs, what_to_do, source_name, source_url)
+           values (%(slug)s, %(scam_type)s, %(title)s, %(summary)s, %(example_channel)s, %(example_text)s, %(counting_on)s, %(playbook)s,
+               %(signs)s, %(what_to_do)s, %(source_name)s, %(source_url)s)
+           on conflict (slug) do update set counting_on = excluded.counting_on, playbook = excluded.playbook
+           where explainers.playbook = '{}'""",
         EXPLAINERS,
     )
 

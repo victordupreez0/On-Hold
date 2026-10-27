@@ -220,6 +220,38 @@ def test_explainer_duplicate_slug_is_a_clean_400(monkeypatch):
     assert res.status_code == 400
 
 
+def test_explainer_keeps_how_they_take_your_money(monkeypatch):
+    app.dependency_overrides[current_user] = lambda: _admin()
+    sent = {}
+
+    def echo(sql, params):
+        sent.update(params)
+        return {**params, "id": "e1", "scamType": params["scamType"]}
+
+    monkeypatch.setattr(main, "one", echo)
+    body = {
+        "slug": "hi-mom-new-number",
+        "scamType": "family",
+        "title": "t",
+        "summary": "s",
+        "exampleChannel": "whatsapp",
+        "exampleText": "e",
+        "countingOn": "Your love for your family.",
+        "playbook": ["They pick parents.", "The money is moved on within minutes."],
+        "signs": ["a"],
+        "whatToDo": ["b"],
+        "sourceName": "SABRIC",
+        "sourceUrl": "https://example.com",
+    }
+    res = client.post("/admin/explainers", json=body)
+    assert res.status_code == 200
+    assert sent["countingOn"] == "Your love for your family."
+    assert res.json()["playbook"] == ["They pick parents.", "The money is moved on within minutes."]
+
+    del body["countingOn"], body["playbook"]  # older clients: the plan is optional
+    assert client.post("/admin/explainers", json=body).json()["playbook"] == []
+
+
 def test_delete_suburb_still_in_use_is_a_clean_400(monkeypatch):
     from psycopg.errors import ForeignKeyViolation
 

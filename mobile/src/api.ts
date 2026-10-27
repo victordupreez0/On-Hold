@@ -352,6 +352,8 @@ function flattenExplainer(input: Omit<Explainer, 'id'>) {
     summary: input.summary,
     exampleChannel: input.example.channel,
     exampleText: input.example.text,
+    countingOn: input.countingOn,
+    playbook: input.playbook,
     signs: input.signs,
     whatToDo: input.whatToDo,
     sourceName: input.source.name,
