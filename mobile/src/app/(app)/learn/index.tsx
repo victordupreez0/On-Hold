@@ -34,7 +34,7 @@ export default function Learn() {
             {SCAM_LABELS[top.scamType]}
           </T>
           <T>
-            {top.nearYou ? `${top.nearYou} reports in your area` : `${top.count} reports`} in the last two weeks.
+            {top.nearYou ? `${top.nearYou} ${top.nearYou === 1 ? 'report' : 'reports'} in your area` : `${top.count} ${top.count === 1 ? 'report' : 'reports'}`} in the last two weeks.
           </T>
           <View style={styles.heroCta}>
             <T v="label" color={colors.white}>
@@ -53,7 +53,7 @@ export default function Learn() {
                 key={c.scamType}
                 icon="trending-up"
                 title={SCAM_LABELS[c.scamType]}
-                subtitle={c.nearYou ? `${c.nearYou} near you · ${c.count} in total` : `${c.count} reports`}
+                subtitle={c.nearYou ? `${c.nearYou} near you · ${c.count} in total` : `${c.count} ${c.count === 1 ? 'report' : 'reports'}`}
                 onPress={guideFor(c.scamType) ? () => openGuide(c.scamType) : undefined}
               />
             ))}
