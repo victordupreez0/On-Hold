@@ -17,6 +17,7 @@ Every bug found and fixed, newest first. Each fix is its own commit, so the comm
 
 | Date | What went wrong | How it showed up | Fix |
 |---|---|---|---|
+| 27 Oct | The live app hung on Learn and on checks, then said "Couldn't reach the server": frozen Vercel instances held all 15 session-pooler connections | Testing the deployed app | `50a261a`: transaction pooler, no prepared statements, functions in Frankfurt |
 | 27 Oct | Home said "1 reports near you", and the map read "1 reports" aloud to screen readers | Testing the deployed app | `1ad8872` |
 | 27 Oct | A silent recording came back as the word "You" (Whisper invents words when there's no speech) | Live voice test | `1e1716c`: voice-activity filter on, so silence gets "We didn't catch any words" |
 | 27 Oct | The "Speak" button returned the same canned transcript whatever was said, so it could even produce a Stop and a family alert for a call that never happened | Final review against the brief | `77054fd`, `c6d7290`: real speech-to-text (Whisper on Cloudflare Workers AI). Tested live with phone (m4a), browser (webm) and wav recordings. |
