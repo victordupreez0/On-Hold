@@ -250,6 +250,7 @@ function CheckFailed({ message, onRetry, onEdit }: { message: string | null; onR
 }
 
 const LINES = ['Looking for pressure tricks…', 'Checking any links…', 'Comparing with scams reported near you…'];
+const LONGEST = LINES.reduce((a, b) => (b.length > a.length ? b : a));
 
 function Pausing() {
   const [i, setI] = useState(0);
@@ -264,9 +265,15 @@ function Pausing() {
         <T v="title" style={{ textAlign: 'center' }}>
           Take a breath.
         </T>
-        <T color={colors.inkSoft} style={{ textAlign: 'center' }}>
-          {LINES[i]}
-        </T>
+        {/* The longest line, invisible, holds the height: when a line wraps to two, the centred ring would jump. */}
+        <View>
+          <T aria-hidden style={{ textAlign: 'center', opacity: 0 }}>
+            {LONGEST}
+          </T>
+          <T color={colors.inkSoft} style={[StyleSheet.absoluteFill, { textAlign: 'center' }]}>
+            {LINES[i]}
+          </T>
+        </View>
       </View>
     </Screen>
   );
