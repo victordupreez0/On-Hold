@@ -15,7 +15,9 @@ are masked, and there are no live links. The scams themselves are real
 patterns, documented by SABRIC, SASSA, SARS, the RTIA and the FSCA.
 
 Needs SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (admin API, creates the auth
-users) and DATABASE_URL (everything else) in backend/.env.
+users) and DATABASE_URL (everything else) in backend/.env. Set ADMIN_PASSWORD
+there too: the admin demo account gets it instead of the published demo
+password, so a public deployment can't be administered by anyone who reads this.
 """
 
 import random
@@ -36,6 +38,8 @@ class SeedSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     supabase_url: str
     supabase_service_role_key: str
+    # The admin demo account must not share the published demo password once the API is public.
+    admin_password: str | None = None
 
 
 def ago(hours: float) -> datetime:
@@ -356,7 +360,7 @@ def pick_type() -> str:
 # ---------- Build ----------
 
 
-def get_or_create_users(client: httpx.Client) -> dict[str, str]:
+def get_or_create_users(client: httpx.Client, admin_password: str | None) -> dict[str, str]:
     existing = {}
     page = 1
     while True:
@@ -366,14 +370,17 @@ def get_or_create_users(client: httpx.Client) -> dict[str, str]:
             break
         page += 1
     ids = {}
-    for name, email, *_ in PEOPLE:
+    for name, email, role, *_ in PEOPLE:
+        password = admin_password if role == "admin" and admin_password else DEMO_PASSWORD
         if email not in existing:
             res = client.post(
                 "/auth/v1/admin/users",
-                json={"email": email, "password": DEMO_PASSWORD, "email_confirm": True, "user_metadata": {"name": name}},
+                json={"email": email, "password": password, "email_confirm": True, "user_metadata": {"name": name}},
             )
             res.raise_for_status()
             existing[email] = res.json()["id"]
+        elif role == "admin" and admin_password:
+            client.put(f"/auth/v1/admin/users/{existing[email]}", json={"password": admin_password}).raise_for_status()
         ids[email] = existing[email]
     return ids
 
@@ -396,7 +403,9 @@ def main():
         "insert into suburbs (name, city, lat, lng) values (%(n)s, %(c)s, %(lat)s, %(lng)s) on conflict (name) do nothing",
         [{"n": n, "c": c, "lat": lat, "lng": lng} for n, c, lat, lng in EXTRA_SUBURBS],
     )
-    ids = get_or_create_users(client)
+    ids = get_or_create_users(client, settings.admin_password)
+    if not settings.admin_password:
+        print("Note: ADMIN_PASSWORD isn't set, so admin@onhold.test keeps the public demo password. Set it before deploying.")
 
     # Wipe everything the seeded accounts own, then rebuild it relative to now.
     seeded = [r["id"] for r in query("select id from profiles where email like '%%@onhold.test'")]
