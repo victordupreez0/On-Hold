@@ -38,7 +38,10 @@ def get_pool() -> ConnectionPool:
             min_size=1,
             max_size=10,
             open=True,
-            kwargs={"autocommit": True},
+            # On Vercel DATABASE_URL is the transaction pooler (port 6543): frozen serverless
+            # instances would otherwise sit on the session pooler's 15 slots and hang every
+            # other request. Transaction mode can't keep prepared statements, so none are made.
+            kwargs={"autocommit": True, "prepare_threshold": None},
             check=_check_if_idle,
             reset=_mark_returned,
         )

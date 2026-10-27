@@ -310,7 +310,7 @@ uv run fastapi dev app/main.py  # http://localhost:8000, interactive docs at /do
 |---|---|
 | `SUPABASE_URL` | Project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service-role key. The server uses it only to create and delete accounts, and for seeding. |
-| `DATABASE_URL` | Session pooler connection string |
+| `DATABASE_URL` | Pooler connection string. On Vercel it must be the **transaction** pooler (port 6543): serverless instances freeze between requests and would hold the session pooler's 15 slots until every request hangs. |
 | `ANTHROPIC_API_KEY` | Claude |
 | `ANTHROPIC_MODEL` | Defaults to `claude-sonnet-5` |
 | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` | Speech to text (a token from the "Workers AI" template) |
@@ -350,7 +350,7 @@ Live now: the [website](https://onhold.pages.dev), the [app](https://onhold-app.
 | Part | Where | How |
 |---|---|---|
 | Database + sign-in | Supabase | `supabase db push` (above) |
-| API | Vercel, free tier | Import the GitHub repo, set the **root directory** to `backend`, and add the environment variables above. Vercel finds `app/main.py` and installs from `pyproject.toml`/`uv.lock` by itself. Set `CORS_ORIGINS` to the app's URL. |
+| API | Vercel, free tier | Import the GitHub repo, set the **root directory** to `backend`, and add the environment variables above. Vercel finds `app/main.py` and installs from `pyproject.toml`/`uv.lock` by itself; `backend/vercel.json` runs it in Frankfurt (`fra1`), next to the database. Set `CORS_ORIGINS` to the app's URL (the value only, not `CORS_ORIGINS=`) and `DATABASE_URL` to the transaction pooler (port 6543). |
 | App (web build) | Cloudflare Pages | `cd mobile && EXPO_PUBLIC_API_URL=https://on-hold-ashen.vercel.app EXPO_PUBLIC_DEMO_ACCOUNTS=true npm run export:web`, then `npx wrangler pages deploy dist --project-name onhold-app`. The demo flag shows Marie and Pieter (never admin) on sign-in. The first time, create the project with `npx wrangler pages project create onhold-app --production-branch main --force` (without `--force`, newer wrangler tries to move it to Workers and fails). |
 | Website | Cloudflare Pages | `npx wrangler pages deploy website --project-name onhold` |
 | Android / iOS | Expo EAS | `eas build -p android --profile preview` (profiles in [mobile/eas.json](mobile/eas.json)). Store listing is next: "coming soon" on the website. |
