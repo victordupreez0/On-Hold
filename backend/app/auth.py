@@ -48,8 +48,14 @@ def current_user(
     except jwt.PyJWTError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Please sign in again.")
 
+    # Same round trip as the profile lookup: stamps last_seen_at for the admin
+    # panel, at most once a minute. The select reads the pre-update snapshot, which is fine.
     row = one(
-        """select id, name, email, phone, role, simple_mode as "simpleMode", suburb
+        """with seen as (
+               update profiles set last_seen_at = now()
+               where id = %(id)s and (last_seen_at is null or last_seen_at < now() - interval '1 minute')
+           )
+           select id, name, email, phone, role, simple_mode as "simpleMode", suburb
            from profiles where id = %(id)s""",
         {"id": payload["sub"]},
     )
