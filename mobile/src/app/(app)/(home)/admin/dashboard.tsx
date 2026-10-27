@@ -1,15 +1,12 @@
+import { router } from 'expo-router';
+
 import * as api from '@/api';
+import { ActivityList } from '@/components/ActivityList';
 import { StatGrid, StatTile } from '@/components/StatTile';
 import { TrendChart } from '@/components/TrendChart';
-import { ErrorState, Header, ListGroup, ListRow, Loading, Screen, Section, timeAgo, type IconName } from '@/components/ui';
+import { ErrorState, Header, Loading, Screen, Section, TextLink } from '@/components/ui';
 import { colors } from '@/theme';
 import { useLoad } from '@/useLoad';
-
-const ACTIVITY_ICON: Record<'check' | 'report' | 'signup', IconName> = {
-  check: 'search',
-  report: 'flag',
-  signup: 'user-plus',
-};
 
 export default function AdminDashboard() {
   const dash = useLoad(api.getAdminDashboard);
@@ -32,7 +29,14 @@ export default function AdminDashboard() {
 
           <Section title="This week">
             <StatGrid>
-              <StatTile label="Checks, last 7 days" value={dash.data.checks.last7Days} icon="trending-up" />
+              <StatTile label="Active people" value={dash.data.users.active7Days} icon="activity" />
+              <StatTile label="New sign-ups" value={dash.data.users.new7Days} icon="user-plus" />
+              <StatTile label="Checks" value={dash.data.checks.last7Days} icon="trending-up" />
+            </StatGrid>
+          </Section>
+
+          <Section title="All checks">
+            <StatGrid>
               <StatTile label="Stop verdicts" value={dash.data.checks.byVerdict.stop} icon="octagon" tint={colors.stopTint} />
               <StatTile label="Wait verdicts" value={dash.data.checks.byVerdict.wait} icon="alert-triangle" tint={colors.waitTint} />
               <StatTile label="Safe verdicts" value={dash.data.checks.byVerdict.safe} icon="check-circle" tint={colors.safeTint} />
@@ -41,17 +45,8 @@ export default function AdminDashboard() {
 
           <TrendChart data={dash.data.trend} label="Reports, last 14 days" />
 
-          <Section title="Recent activity">
-            <ListGroup>
-              {dash.data.activity.map((a) => (
-                <ListRow
-                  key={`${a.type}-${a.id}`}
-                  icon={ACTIVITY_ICON[a.type]}
-                  title={a.summary}
-                  subtitle={`${a.type === 'check' ? 'Check' : a.type === 'report' ? 'Report' : 'New sign-up'} · ${timeAgo(a.createdAt)}`}
-                />
-              ))}
-            </ListGroup>
+          <Section title="Recent activity" action={<TextLink label="See all" onPress={() => router.push('/admin/activity')} />}>
+            <ActivityList items={dash.data.activity} />
           </Section>
         </>
       )}
