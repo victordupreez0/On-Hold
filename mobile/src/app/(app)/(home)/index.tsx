@@ -216,7 +216,9 @@ function Today({ user, checks, onSeeAll }: { user: User; checks: ChecksLoad; onS
               <ListRow
                 icon="trending-up"
                 title={`Going around: ${SCAM_LABELS[near.scamType]}`}
-                subtitle={near.nearYou ? `${near.nearYou} reports near you this fortnight` : `${near.count} reports this fortnight`}
+                subtitle={near.nearYou
+                  ? `${near.nearYou} ${near.nearYou === 1 ? 'report' : 'reports'} near you this fortnight`
+                  : `${near.count} ${near.count === 1 ? 'report' : 'reports'} this fortnight`}
                 onPress={() => (nearGuide ? router.push({ pathname: '/guide/[slug]', params: { slug: nearGuide.slug } }) : router.navigate('/learn'))}
               />
             )}
