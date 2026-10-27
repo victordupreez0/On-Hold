@@ -168,6 +168,12 @@ function Today({ user, checks, onSeeAll }: { user: User; checks: ChecksLoad; onS
         </Section>
       )}
 
+      {user.role === 'admin' && (
+        <ListGroup>
+          <ListRow icon="bar-chart-2" iconBg={colors.highlighter} title="Admin panel" subtitle="Dashboard, activity, users, reports and Learn guides" onPress={() => router.push('/admin')} />
+        </ListGroup>
+      )}
+
       {!user.suburb && (
         <ListGroup>
           <ListRow

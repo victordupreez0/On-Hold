@@ -58,7 +58,15 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = REQUEST_
   if (!res.ok) {
     // FastAPI's own validation errors (422) carry a list of field problems, not a sentence -- it rendered as "[object Object]".
     const detail = body?.detail;
-    const message = typeof detail === 'string' ? detail : Array.isArray(detail) ? 'Some of that isn’t quite right. Check what you entered and try again.' : 'Something went wrong. Please try again.';
+    // The host can turn away an oversized upload before the API sees it, so its 413 carries no detail of ours.
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : res.status === 413
+          ? 'That’s too big to send. Try a screenshot instead of a photo.'
+          : Array.isArray(detail)
+            ? 'Some of that isn’t quite right. Check what you entered and try again.'
+            : 'Something went wrong. Please try again.';
     throw new ApiError(message, res.status);
   }
   return body as T;
@@ -118,8 +126,10 @@ export async function check(input: CheckInput): Promise<CheckResult> {
   return request<CheckResult>('/checks', { method: 'POST', body: JSON.stringify(input) }, 45_000);
 }
 
-export async function transcribe(_audioUri: string): Promise<string> {
-  const { text } = await post<{ text: string }>('/transcribe', { audioUri: _audioUri });
+/** Speech to text: the recording goes up as base64, the words come back. Nothing is stored. */
+export async function transcribe(base64: string, mimeType?: string): Promise<string> {
+  // Longer than the default: up to two minutes of audio to upload, then the speech-to-text itself.
+  const { text } = await request<{ text: string }>('/transcribe', { method: 'POST', body: JSON.stringify({ base64, mimeType }) }, 45_000);
   return text;
 }
 
@@ -245,29 +255,38 @@ export async function moderateReport(id: string, decision: 'approved' | 'rejecte
   return post<Report>(`/admin/reports/${id}/moderate`, { decision, reason });
 }
 
-export type AdminReport = Report & { moderatedBy: string | null; moderatedAt: string | null };
+export type AdminReport = Report & { moderatedBy: string | null; moderatedAt: string | null; reporterName: string | null; moderatorName: string | null };
+export type ActivityType = 'signup' | 'signin' | 'check' | 'chat' | 'report' | 'moderation' | 'invite' | 'family' | 'help';
+export type Activity = { type: ActivityType; id: string; userId: string; userName: string; summary: string; createdAt: string };
 export type AdminDashboard = {
-  users: { total: number; byRole: Record<Role, number> };
+  users: { total: number; byRole: Record<Role, number>; new7Days: number; active7Days: number };
   checks: { total: number; byVerdict: Record<CheckResult['verdict'], number>; last7Days: number };
   reports: { total: number; byStatus: Record<Report['status'], number> };
   aiCallsLast24h: number;
   trend: { date: string; count: number }[];
-  activity: { type: 'check' | 'report' | 'signup'; id: string; summary: string; createdAt: string }[];
+  activity: Activity[];
 };
+
+/** Query string from a filter object, skipping empty values. */
+function qs(filter: Record<string, string | number | undefined>) {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(filter)) if (v !== undefined && v !== '') params.set(k, String(v));
+  const s = params.toString();
+  return s ? `?${s}` : '';
+}
 
 export async function getAdminDashboard() {
   return get<AdminDashboard>('/admin/dashboard');
 }
 
-export async function listAllReports(filter: { status?: Report['status']; scamType?: ScamType; search?: string; limit?: number; offset?: number } = {}) {
-  const params = new URLSearchParams();
-  if (filter.status) params.set('status', filter.status);
-  if (filter.scamType) params.set('scamType', filter.scamType);
-  if (filter.search) params.set('search', filter.search);
-  if (filter.limit) params.set('limit', String(filter.limit));
-  if (filter.offset) params.set('offset', String(filter.offset));
-  const qs = params.toString();
-  return get<AdminReport[]>(`/admin/reports${qs ? `?${qs}` : ''}`);
+export async function listActivity(filter: { userId?: string; type?: ActivityType; limit?: number; offset?: number } = {}) {
+  return get<Activity[]>(`/admin/activity${qs(filter)}`);
+}
+
+export async function listAllReports(
+  filter: { status?: Report['status']; scamType?: ScamType; search?: string; reporterId?: string; limit?: number; offset?: number } = {},
+) {
+  return get<AdminReport[]>(`/admin/reports${qs(filter)}`);
 }
 
 export async function getAdminReport(id: string) {
@@ -282,24 +301,31 @@ export async function adminDeleteReport(id: string) {
   await del(`/admin/reports/${id}`);
 }
 
-export type AdminUser = User & { createdAt: string };
+export type AdminUser = User & { createdAt: string; lastSeenAt: string | null };
+export type FamilyTie = { id: string; relation: 'looksAfter' | 'lookedAfterBy'; personId: string | null; name: string; status: 'pending' | 'active'; createdAt: string };
+export type AdminUserDetail = AdminUser & {
+  checkCount: number;
+  stopCount: number;
+  reportCount: number;
+  aiCalls7Days: number;
+  family: FamilyTie[];
+  activity: Activity[];
+};
 
 export async function listUsers(filter: { search?: string; role?: Role; limit?: number; offset?: number } = {}) {
-  const params = new URLSearchParams();
-  if (filter.search) params.set('search', filter.search);
-  if (filter.role) params.set('role', filter.role);
-  if (filter.limit) params.set('limit', String(filter.limit));
-  if (filter.offset) params.set('offset', String(filter.offset));
-  const qs = params.toString();
-  return get<AdminUser[]>(`/admin/users${qs ? `?${qs}` : ''}`);
+  return get<AdminUser[]>(`/admin/users${qs(filter)}`);
 }
 
 export async function getUser(id: string) {
-  return get<AdminUser>(`/admin/users/${id}`);
+  return get<AdminUserDetail>(`/admin/users/${id}`);
 }
 
-export async function updateUserRole(id: string, role: Role) {
-  return patch<AdminUser>(`/admin/users/${id}`, { role });
+export async function createUser(input: { name: string; email: string; role: Role; suburb: string | null }) {
+  return post<{ user: AdminUser; tempPassword: string }>('/admin/users', input);
+}
+
+export async function updateUser(id: string, changes: Partial<Pick<User, 'name' | 'phone' | 'suburb' | 'role'>>) {
+  return patch<AdminUser>(`/admin/users/${id}`, changes);
 }
 
 export async function deleteUser(id: string) {

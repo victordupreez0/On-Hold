@@ -1,5 +1,31 @@
 # Handoff: On Hold, toward launch-ready
 
+## Session 7 (27 Oct, day before the 28 Oct 14:00 hand-in) -- read this first
+
+The final brief is the 13 screenshots in `.claude/` (gitignored). Marked from the GitHub repo's `main`.
+Status against it, item by item, is in the walkthrough the user has (claude.ai artifact) and summarised here.
+
+Done and merged into `dev` (not pushed, not on `main` yet):
+- **Realistic demo data**: `scripts/seed.py` rebuilds all `@onhold.test` data relative to now on every run
+  (31 people, ~110 checks, ~130 reports, family links, alerts). Run it on demo morning. Admin password comes
+  from `ADMIN_PASSWORD` in `backend/.env` (not set yet -- until then admin still uses the public `onhold-demo`).
+- **Admin insight**: `profiles.last_seen_at` (stamped in `auth.py`), `GET /admin/activity`, richer
+  `GET /admin/users/{id}`, `POST /admin/users`, `PATCH` edits name/phone/suburb/role, reporter names on reports.
+  App: Activity screen, person page, add-a-person, paging. The admin hub is now reachable (it wasn't).
+- **Voice is real in code** (Whisper on Cloudflare Workers AI) but **never live-tested**: needs
+  `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN` in `backend/.env`. Unknown: whether Whisper accepts the m4a
+  phones record and Chrome's webm; whether silence produces invented words (`vad_filter` is the fix).
+- **Website** (`website/`) with the live app in a phone frame; `npm run export:web` builds the app for
+  Cloudflare Pages (see `website/README.md` for the two deploy traps it works around).
+- **CI fix**: the type check failed on every clean checkout (gitignored `expo-env.d.ts`); fixed, not yet seen green.
+- **Docs**: README rewritten against the brief, `backend/docs/api.md` (48 routes), `docs/testing.md` (bug log).
+
+Still open, mostly the user's: lecturer as repo collaborator, 5-8 min demo video (link in README),
+week-15 peer feedback written up, merge `dev` → `main` and push, deploy (API on Vercel with root `backend`;
+app + website on Cloudflare Pages), Supabase Site URL, an outside tester, a sprint board (`gh` is still
+logged in as `duckstackdigital`). The sections below are from 14 Oct; item 6 (voice) is now done in code.
+
+
 Written 14 Oct 2026 (updated end of session 6, same day) for whichever agent picks this up next. Read this before touching anything — it'll save you re-deriving a lot of state. The rest of the README is still accurate and worth reading too (stack, run instructions, scope changes, risks table); this file is the "what's actually left" layer on top of it.
 
 **Milestone check is today (14 Oct).** Final hand-in is 28 Oct. Everything below is written assuming the next work session is inside that weeks-3-4 window.

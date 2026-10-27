@@ -8,7 +8,7 @@ import { Chip, Feather, T, TextField } from './ui';
 
 /** Search-and-pick suburb field, shared by the report form and the profile.
  * Never asks for anything more precise than a suburb. */
-export function SuburbPicker({ value, onChange, error }: { value: string | null; onChange: (suburb: string) => void; error?: string }) {
+export function SuburbPicker({ value, onChange, error, label = 'Your area' }: { value: string | null; onChange: (suburb: string) => void; error?: string; label?: string }) {
   const [search, setSearch] = useState('');
   const [picking, setPicking] = useState(!value);
   // Loaded unconditionally -- hooks can't follow the early return below.
@@ -17,7 +17,7 @@ export function SuburbPicker({ value, onChange, error }: { value: string | null;
   if (value && !picking) {
     return (
       <View style={{ gap: space.xs + 2 }}>
-        <T v="label">Your area</T>
+        <T v="label">{label}</T>
         <View style={styles.area}>
           <Feather name="map-pin" size={20} color={colors.ink} />
           <T v="label" style={{ flex: 1 }}>
@@ -42,7 +42,7 @@ export function SuburbPicker({ value, onChange, error }: { value: string | null;
   return (
     <View style={{ gap: space.sm }}>
       <TextField
-        label="Your area"
+        label={label}
         hint="Only the suburb is shown on the map, never your address or name."
         value={search}
         onChangeText={setSearch}

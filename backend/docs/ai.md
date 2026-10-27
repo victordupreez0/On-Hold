@@ -97,6 +97,27 @@ from the first version, where chats lived only in memory: people asked to
 see their past questions. The original message or screenshot being checked
 is still never stored (below).
 
+## Speech to text ("Speak")
+
+`POST /transcribe` → `app/ai.py:transcribe()`. Claude doesn't take audio, so
+the recording goes to Whisper (`@cf/openai/whisper-large-v3-turbo`) on
+Cloudflare Workers AI, with `CLOUDFLARE_ACCOUNT_ID` / `CLOUDFLARE_API_TOKEN`
+on the server only. The app uploads the recording as base64 (web: the
+MediaRecorder blob; native: the cache file, deleted after reading) and puts
+the words in the editable text box, so the person sees and can fix them
+before anything is checked. Neither the audio nor the words are stored.
+
+| Case | Answer |
+|---|---|
+| Recording over 3 MB decoded (about 2 minutes), not base64, or empty | 400 before any AI call is spent |
+| Hourly AI budget used up (shared with checks and chat) | 429 |
+| Keys missing, Cloudflare error, odd response or 20 s timeout | 503 "Couldn’t hear that right now. Try again, or type it instead." |
+| Whisper heard no words | 400 "We didn’t catch any words…" |
+
+The app stops recording at 2 minutes and refuses anything over the cap
+before uploading, so the limit behaves the same on both sides and fits
+Vercel's 4.5 MB request cap.
+
 ## What isn't validated here
 
 The raw check input (message text, screenshot) is **not persisted** --

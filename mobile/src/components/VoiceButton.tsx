@@ -5,8 +5,9 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { File } from 'expo-file-system';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
 import * as api from '@/api';
 import { colors, radius, space } from '@/theme';
@@ -14,6 +15,32 @@ import { useToast } from '@/toast';
 import { Feather, T } from './ui';
 
 type Props = { onTranscript: (text: string) => void; style?: StyleProp<ViewStyle> };
+
+/** Two minutes at this preset is about 2MB, under the server's 3MB cap. */
+const MAX_SECONDS = 120;
+/** 3MB of audio as base64: the same limit as the server's MAX_AUDIO_BYTES (backend/app/ai.py). */
+const MAX_BASE64_LENGTH = 4 * 1024 * 1024;
+
+/** The finished recording as base64. Web hands back a blob: URL, native a file in the app's cache. */
+async function readRecording(uri: string): Promise<{ base64: string; mimeType?: string }> {
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(uri)).blob();
+    URL.revokeObjectURL(uri);
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+    return { base64: dataUrl.slice(dataUrl.indexOf(',') + 1), mimeType: blob.type || undefined };
+  }
+  const file = new File(uri);
+  try {
+    return { base64: await file.base64() };
+  } finally {
+    if (file.exists) file.delete(); // what was said on the call shouldn't stay on the phone
+  }
+}
 
 /** Tap to talk, tap to stop. The words land in the text box so people can see and fix them. */
 export function VoiceButton({ onTranscript, style }: Props) {
@@ -35,19 +62,27 @@ export function VoiceButton({ onTranscript, style }: Props) {
   };
 
   const stop = async () => {
-    await recorder.stop();
-    setBusy(true);
+    setBusy(true); // first, so a second tap or the time limit can't stop it twice
     try {
-      onTranscript(await api.transcribe(recorder.uri ?? ''));
-      // ponytail: voice-to-text is a canned demo stand-in (see backend/app/ai.py:transcribe),
-      // not what was actually said — say so, since it lands in an editable field either way.
-      toast('Voice-to-text is a demo stand-in for now — read it over before you check it.');
-    } catch {
-      toast('We couldn’t hear that. Try again, or type it instead.');
+      await recorder.stop();
+      if (!recorder.uri) throw new Error('No recording');
+      const { base64, mimeType } = await readRecording(recorder.uri);
+      if (base64.length > MAX_BASE64_LENGTH) return toast('That recording is too long. Keep it under two minutes, or type it instead.');
+      onTranscript(await api.transcribe(base64, mimeType));
+    } catch (e) {
+      // The server's messages are written for people ("We didn’t catch any words…"); anything else gets a plain one.
+      toast(e instanceof api.ApiError ? e.message : 'We couldn’t hear that. Try again, or type it instead.');
     } finally {
       setBusy(false);
     }
   };
+
+  // Stop on its own at the limit, rather than record something too long to send.
+  useEffect(() => {
+    if (!state.isRecording || busy) return;
+    const timer = setTimeout(stop, MAX_SECONDS * 1000 - state.durationMillis);
+    return () => clearTimeout(timer);
+  });
 
   const recording = state.isRecording;
   const seconds = Math.floor(state.durationMillis / 1000);
