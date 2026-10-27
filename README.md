@@ -61,7 +61,7 @@ Scammers in South Africa go after the moment between reading a message and actin
 | **Family** | A guardian invites someone with a 6-character code or a WhatsApp share. Accepting shows exactly what is and isn't shared. Per-person sharing toggles, stop sharing any time. A Stop verdict alerts guardians **only if the person agreed**. "Tell my family" sends any check on purpose. |
 | **Scam map** | Approved community reports per suburb as a heat map, filterable by scam type, with a ranked list of areas. Never more precise than a suburb. |
 | **Report a scam** | Create, edit and delete your own reports. Every report is moderated before it reaches the map, and an edited report goes back to review. |
-| **Learn** | "Going around near you" from the last 14 days of approved reports, plus 9 sourced guides to the common SA scams. |
+| **Learn** | "Going around near you" from the last 14 days of approved reports, plus 9 sourced guides to the common SA scams. Each guide shows **how they take your money**: the weakness the scammer is counting on, and their plan step by step, ending with where your money goes. |
 | **Admin panel** | A dashboard (totals, active people this week, the 14-day trend), a live **activity feed** of what everyone is doing, **users** (last active, history, family links; add, edit, change role, delete), a **moderation queue** (approve, or reject with a reason the reporter sees), and full CRUD on Learn guides and suburbs. |
 | **Accessibility** | Simple mode (one giant Check button plus "Call Pieter"), Atkinson Hyperlegible Next, 48 pt touch targets, verdicts always icon + word + colour, screen-reader labels throughout. |
 

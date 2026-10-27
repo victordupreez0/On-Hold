@@ -841,7 +841,8 @@ def _delete_auth_user(user_id: uuid.UUID):
 
 _EXPLAINER_FIELDS = """id, slug, scam_type as "scamType", title, summary,
     example_channel as "exampleChannel", example_text as "exampleText",
-    signs, what_to_do as "whatToDo", source_name as "sourceName", source_url as "sourceUrl" """
+    counting_on as "countingOn", playbook, signs, what_to_do as "whatToDo",
+    source_name as "sourceName", source_url as "sourceUrl" """
 
 
 def _shape_explainer(row: dict) -> dict:
@@ -852,6 +853,8 @@ def _shape_explainer(row: dict) -> dict:
         "title": row["title"],
         "summary": row["summary"],
         "example": {"channel": row["exampleChannel"], "text": row["exampleText"]},
+        "countingOn": row["countingOn"],
+        "playbook": row["playbook"],
         "signs": row["signs"],
         "whatToDo": row["whatToDo"],
         "source": {"name": row["sourceName"], "url": row["sourceUrl"]},
@@ -876,6 +879,8 @@ class ExplainerInput(BaseModel):
     summary: str = Field(min_length=1, max_length=500)
     exampleChannel: Channel
     exampleText: str = Field(min_length=1, max_length=1000)
+    countingOn: str = Field(default="", max_length=300)
+    playbook: list[str] = Field(default_factory=list, max_length=6)
     signs: list[str] = Field(min_length=1, max_length=10)
     whatToDo: list[str] = Field(min_length=1, max_length=10)
     sourceName: str = Field(min_length=1, max_length=200)
@@ -886,8 +891,10 @@ class ExplainerInput(BaseModel):
 def create_explainer(body: ExplainerInput, _: Admin):
     try:
         row = one(
-            f"""insert into explainers (slug, scam_type, title, summary, example_channel, example_text, signs, what_to_do, source_name, source_url)
-                values (%(slug)s, %(scamType)s, %(title)s, %(summary)s, %(exampleChannel)s, %(exampleText)s, %(signs)s, %(whatToDo)s, %(sourceName)s, %(sourceUrl)s)
+            f"""insert into explainers (slug, scam_type, title, summary, example_channel, example_text, counting_on, playbook,
+                    signs, what_to_do, source_name, source_url)
+                values (%(slug)s, %(scamType)s, %(title)s, %(summary)s, %(exampleChannel)s, %(exampleText)s, %(countingOn)s, %(playbook)s,
+                    %(signs)s, %(whatToDo)s, %(sourceName)s, %(sourceUrl)s)
                 returning {_EXPLAINER_FIELDS}""",
             body.model_dump(),
         )
@@ -901,7 +908,8 @@ def update_explainer(explainer_id: uuid.UUID, body: ExplainerInput, _: Admin):
     try:
         row = one(
             f"""update explainers set slug = %(slug)s, scam_type = %(scamType)s, title = %(title)s, summary = %(summary)s,
-                example_channel = %(exampleChannel)s, example_text = %(exampleText)s, signs = %(signs)s, what_to_do = %(whatToDo)s,
+                example_channel = %(exampleChannel)s, example_text = %(exampleText)s, counting_on = %(countingOn)s, playbook = %(playbook)s,
+                signs = %(signs)s, what_to_do = %(whatToDo)s,
                 source_name = %(sourceName)s, source_url = %(sourceUrl)s
                 where id = %(id)s returning {_EXPLAINER_FIELDS}""",
             {**body.model_dump(), "id": explainer_id},

@@ -109,6 +109,9 @@ export type Explainer = {
   title: string;
   summary: string;
   example: { channel: Channel; text: string };
+  /** The scam from the scammer's side: the weakness they use, then their plan step by step. Empty if not written. */
+  countingOn: string;
+  playbook: string[];
   signs: string[];
   whatToDo: string[];
   source: { name: string; url: string };

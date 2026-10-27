@@ -12,6 +12,8 @@ const BLANK: ExplainerDraft = {
   title: '',
   summary: '',
   example: { channel: 'sms', text: '' },
+  countingOn: '',
+  playbook: [],
   signs: [],
   whatToDo: [],
   source: { name: '', url: '' },
