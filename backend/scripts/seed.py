@@ -159,7 +159,7 @@ SCAMS = {
             "WhatsApp offering to fast-track my grant if I pay a R100 “processing fee”.",
             "Message said my SASSA card is being replaced and I must send my ID number and card PIN to keep getting paid.",
             "Caller said he was from SASSA and that my grant was approved for an increase, but I first had to pay R250.",
-            "Someone at the pay point offered to help with my card and then asked for my PIN.",
+            "Caller said my SASSA card had been flagged for fraud and asked me to confirm my PIN to keep it open.",
         ],
         "stop": ["This is a fake SASSA message", "SASSA never charges a fee like this"],
         "reasons": [
@@ -241,7 +241,7 @@ SCAMS = {
         "channels": ["call", "call", "sms"],
         "reports": [
             "Caller about “funeral cover” told me to approve the bank SMS that was about to come through.",
-            "Got a DebiCheck request for R399 a month from a company I’ve never heard of.",
+            "Got an SMS asking me to approve a DebiCheck of R399 a month for a company I’ve never heard of.",
             "Man said my insurance premium was going down and I just had to approve the new debit order on my phone.",
             "Someone phoned to “cancel” a policy I never had and said I must accept the bank’s request to stop it.",
         ],
@@ -350,6 +350,24 @@ def masked_sender(channel: str) -> str | None:
     if channel == "email":
         return rng.choice(["refunds@*****.com", "noreply@****-efiling.co", "support@*******.net"])
     return f"0{rng.choice('678')}{rng.randint(0, 9)} *** **{rng.randint(10, 99)}"
+
+
+def channel_of(description: str, scam_type: str) -> str:
+    """The channel a report's own words describe, so an "SMS about..." is never filed as a phone call."""
+    d = description.lower()
+    found = [(d.find(w), channel) for words, channel in [
+        (("whatsapp", "voice note", "telegram"), "whatsapp"), (("email",), "email"), (("sms", "message"), "sms"),
+        (("phoned", "caller", "called", "calling", "phone", "man said", "woman said"), "call"),
+    ] for w in words if w in d]
+    return min(found)[1] if found else SCAMS[scam_type]["channels"][0]  # the first one mentioned is how it arrived
+
+
+def describe(scam_type: str, channel: str | None = None) -> tuple[str, str]:
+    """A report description and its channel; matches `channel` when one is given and the type has a story for it."""
+    stories = SCAMS[scam_type]["reports"]
+    fitting = [r for r in stories if channel is None or channel_of(r, scam_type) == channel] or stories
+    text = rng.choice(fitting)
+    return text, channel_of(text, scam_type)
 
 
 def pick_type() -> str:
@@ -528,10 +546,12 @@ def main():
             hours = recent(joined[email] - 1)
             check_id, channel, scam_type, verdict = add_check(email, hours)
             if verdict != "safe" and rng.random() < 0.35:  # some people go on to warn their area
-                add_report(email, max(hours - rng.uniform(0.1, 2), 0.1), channel, scam_type, rng.choice(SCAMS[scam_type]["reports"]), check_id)
+                text, told = describe(scam_type, channel)
+                add_report(email, max(hours - rng.uniform(0.1, 2), 0.1), told, scam_type, text, check_id)
         for _ in range(round((rng.randint(1, 3) if is_guardian else rng.randint(2, 6)) * tenure)):
             scam_type = pick_type()
-            add_report(email, recent(joined[email] - 1), rng.choice(SCAMS[scam_type]["channels"]), scam_type, rng.choice(SCAMS[scam_type]["reports"]))
+            text, channel = describe(scam_type)
+            add_report(email, recent(joined[email] - 1), channel, scam_type, text)
 
     for description, reason in REJECTED:
         email = rng.choice(reporters)
