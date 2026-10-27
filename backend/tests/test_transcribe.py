@@ -94,3 +94,11 @@ def test_bad_audio_is_a_400_before_spending_an_ai_call(monkeypatch, ai_calls, au
     calls = _cloudflare(monkeypatch, body={"result": {"text": "x"}})
     assert client.post("/transcribe", json={"base64": audio}).status_code == 400
     assert calls == [] and ai_calls == []
+
+
+def test_audio_cap_matches_the_app_and_fits_vercels_body_limit():
+    """mobile VoiceButton's MAX_BASE64_LENGTH is 4 * 1024 * 1024; a recording exactly that size must pass."""
+    at_cap = base64.b64encode(b"\1" * ai.MAX_AUDIO_BYTES).decode()
+    assert len(at_cap) == 4 * 1024 * 1024
+    ai.check_audio(at_cap)  # doesn't raise
+    assert len(f'{{"base64": "{at_cap}", "mimeType": "audio/webm;codecs=opus"}}') < 4.5 * 1024 * 1024

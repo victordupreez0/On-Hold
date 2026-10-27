@@ -278,7 +278,7 @@ def ask_about_check(check_id: uuid.UUID, body: AskInput, user: User):
 
 
 class TranscribeInput(BaseModel):
-    base64: str = Field(max_length=7_500_000)  # ~5MB decoded; ai.check_audio gives the friendly message
+    base64: str = Field(max_length=4_500_000)  # backstop; ai.check_audio gives the friendly message at 3MB decoded
     mimeType: str | None = Field(default=None, max_length=100)  # ignored: Whisper reads the container from the bytes
 
 

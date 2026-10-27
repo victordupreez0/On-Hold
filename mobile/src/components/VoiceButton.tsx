@@ -16,8 +16,10 @@ import { Feather, T } from './ui';
 
 type Props = { onTranscript: (text: string) => void; style?: StyleProp<ViewStyle> };
 
-/** Two minutes at this preset is about 2MB, well under the server's 5MB cap. */
+/** Two minutes at this preset is about 2MB, under the server's 3MB cap. */
 const MAX_SECONDS = 120;
+/** 3MB of audio as base64: the same limit as the server's MAX_AUDIO_BYTES (backend/app/ai.py). */
+const MAX_BASE64_LENGTH = 4 * 1024 * 1024;
 
 /** The finished recording as base64. Web hands back a blob: URL, native a file in the app's cache. */
 async function readRecording(uri: string): Promise<{ base64: string; mimeType?: string }> {
@@ -65,6 +67,7 @@ export function VoiceButton({ onTranscript, style }: Props) {
       await recorder.stop();
       if (!recorder.uri) throw new Error('No recording');
       const { base64, mimeType } = await readRecording(recorder.uri);
+      if (base64.length > MAX_BASE64_LENGTH) return toast('That recording is too long. Keep it under two minutes, or type it instead.');
       onTranscript(await api.transcribe(base64, mimeType));
     } catch (e) {
       // The server's messages are written for people ("We didn’t catch any words…"); anything else gets a plain one.

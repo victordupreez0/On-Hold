@@ -219,7 +219,9 @@ def ask_about_check(check: dict, history: list[dict], question: str) -> str:
 
 # Speech-to-text runs on Cloudflare Workers AI's Whisper: Claude doesn't take audio.
 WHISPER_MODEL = "@cf/openai/whisper-large-v3-turbo"
-MAX_AUDIO_BYTES = 5 * 1024 * 1024  # the app stops at 2 minutes, about 2MB at its 128kbps
+# The app stops at 2 minutes, about 2MB at its 128kbps. As base64 this is 4MB, under Vercel's 4.5MB body limit.
+# mobile/src/components/VoiceButton.tsx checks the same number before uploading.
+MAX_AUDIO_BYTES = 3 * 1024 * 1024
 
 
 class BadAudio(CheckFailed):
@@ -228,7 +230,7 @@ class BadAudio(CheckFailed):
 
 def check_audio(data: str) -> None:
     """Cheap checks the route runs before spending an AI call on the recording."""
-    if len(data) * 3 // 4 > MAX_AUDIO_BYTES:
+    if len(data) > MAX_AUDIO_BYTES * 4 // 3:
         raise BadAudio("That recording is too long. Keep it under two minutes, or type it instead.")
     try:
         audio = base64.b64decode(data, validate=True)
