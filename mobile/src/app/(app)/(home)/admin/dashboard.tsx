@@ -40,6 +40,7 @@ export default function AdminDashboard() {
               <StatTile label="Stop verdicts" value={dash.data.checks.byVerdict.stop} icon="octagon" tint={colors.stopTint} />
               <StatTile label="Wait verdicts" value={dash.data.checks.byVerdict.wait} icon="alert-triangle" tint={colors.waitTint} />
               <StatTile label="Safe verdicts" value={dash.data.checks.byVerdict.safe} icon="check-circle" tint={colors.safeTint} />
+              <StatTile label="Scam warnings" value={dash.data.checks.byVerdict.info} icon="info" tint={colors.grey} />
             </StatGrid>
           </Section>
 

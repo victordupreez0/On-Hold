@@ -17,6 +17,7 @@ Every bug found and fixed, newest first. Each fix is its own commit, so the comm
 
 | Date | What went wrong | How it showed up | Fix |
 |---|---|---|---|
+| 27 Oct | A genuine AARTO warning poster got a green "Looks okay", which could read as "fine messages are okay" | Developer testing of the live app | `bae2b8a`: grey "Scam warning" outcome; fake warnings are Stop |
 | 27 Oct | Learn listed "Something else" as a scam going around, and tapping it did nothing (no guide) | Developer testing of the live app | `725f320` |
 | 27 Oct | The logo on "Take a breath" jumped up and down whenever the status line wrapped to two lines | Developer testing of the live app | `abc3b5c` |
 | 27 Oct | The live app hung on Learn and on checks, then said "Couldn't reach the server": frozen Vercel instances held all 15 session-pooler connections | Testing the deployed app | `50a261a`: transaction pooler, no prepared statements, functions in Frankfurt |

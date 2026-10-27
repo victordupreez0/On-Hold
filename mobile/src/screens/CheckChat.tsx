@@ -13,6 +13,7 @@ import { useLoad } from '@/useLoad';
 const SUGGESTIONS = {
   risky: ['What if they contact me again?', 'I already replied or clicked. What now?', 'Who should I tell about this?'],
   safe: ['How can I be sure it’s real?', 'What would make this a scam?'],
+  info: ['How do I spot this scam?', 'What do I do if I get one?'],
 };
 
 /** A follow-up chat about one check, saved so it shows up again from History. */
@@ -111,7 +112,7 @@ export default function CheckChat() {
           !busy &&
           check.data && (
             <View style={styles.suggestions}>
-              {SUGGESTIONS[check.data.verdict === 'safe' ? 'safe' : 'risky'].map((s) => (
+              {SUGGESTIONS[check.data.verdict === 'safe' || check.data.verdict === 'info' ? check.data.verdict : 'risky'].map((s) => (
                 <Pressable
                   key={s}
                   onPress={() => send(s)}

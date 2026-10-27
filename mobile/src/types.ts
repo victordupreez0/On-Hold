@@ -1,7 +1,8 @@
 // Shared shapes for the app. Phase 2's FastAPI responses must match these.
 
 export type Role = 'protected' | 'guardian' | 'admin';
-export type Verdict = 'stop' | 'wait' | 'safe';
+/** info: a genuine warning *about* a scam (a poster, a news report), not a scam itself. */
+export type Verdict = 'stop' | 'wait' | 'safe' | 'info';
 export type Channel = 'sms' | 'whatsapp' | 'email' | 'call';
 export type ScamType =
   | 'bank'
@@ -42,6 +43,8 @@ export type CheckResult = {
   reasons: string[];
   nextSteps: string[];
   sayThis?: string;
+  /** Official sites the verdict cites, from a vetted list on the server. */
+  sources: { name: string; url: string }[];
   createdAt: string;
   /** Only on the list endpoint: how many follow-up chat messages this check has. */
   messageCount?: number;
