@@ -44,6 +44,36 @@ function Guide({ e }: { e: Explainer }) {
         </View>
       </View>
 
+      {e.playbook.length > 0 && (
+        <View style={{ gap: space.sm }}>
+          <T v="heading" role="heading">
+            How they take your money
+          </T>
+          <View style={styles.plan}>
+            {!!e.countingOn && (
+              <View style={{ gap: space.xs }}>
+                <T v="overline" color={colors.highlighter}>
+                  What they’re counting on
+                </T>
+                <T v="heading" color={colors.white}>
+                  {e.countingOn}
+                </T>
+              </View>
+            )}
+            {e.playbook.map((s, i) => (
+              <View key={s} style={styles.line}>
+                <View style={styles.num}>
+                  <T v="label">{i + 1}</T>
+                </View>
+                <T color={colors.white} style={{ flex: 1 }}>
+                  {s}
+                </T>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
       <View style={{ gap: space.sm + 2 }}>
         <T v="heading" role="heading">
           How to spot it
@@ -89,6 +119,7 @@ function Guide({ e }: { e: Explainer }) {
 const styles = StyleSheet.create({
   example: { backgroundColor: colors.grey, borderRadius: radius.lg, borderTopLeftRadius: 4, padding: space.md, gap: space.sm },
   exampleCall: { backgroundColor: colors.ink, borderTopLeftRadius: radius.lg },
+  plan: { backgroundColor: colors.ink, borderRadius: radius.lg, padding: space.md + 4, gap: space.md + 2 },
   line: { flexDirection: 'row', gap: space.sm + 4, alignItems: 'flex-start' },
   num: {
     width: 32,
