@@ -48,7 +48,12 @@ export default function Ask() {
         api.check({ kind: mode, text: text.trim() || undefined, image: image ? { base64: image.base64, mediaType: image.mediaType } : undefined }),
         new Promise((r) => setTimeout(r, PAUSE_MS)),
       ]);
-      const feel = { stop: Haptics.NotificationFeedbackType.Error, wait: Haptics.NotificationFeedbackType.Warning, safe: Haptics.NotificationFeedbackType.Success };
+      const feel = {
+        stop: Haptics.NotificationFeedbackType.Error,
+        wait: Haptics.NotificationFeedbackType.Warning,
+        safe: Haptics.NotificationFeedbackType.Success,
+        info: Haptics.NotificationFeedbackType.Warning, // a scam warning shouldn't feel like an all-clear
+      };
       Haptics.notificationAsync(feel[result.verdict]).catch(() => {});
       // Reset so coming back to the Check tab starts fresh.
       setText('');

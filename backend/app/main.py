@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from psycopg.errors import ForeignKeyViolation, UniqueViolation
+from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
 from . import ai, auth
@@ -144,7 +145,7 @@ def update_me(body: ProfilePatch, user: User):
 # ---------- Checks ----------
 
 _CHECK_FIELDS = """id, user_id as "userId", kind, verdict, confidence, scam_type as "scamType",
-    headline, reasons, next_steps as "nextSteps", say_this as "sayThis", created_at as "createdAt" """
+    headline, reasons, next_steps as "nextSteps", say_this as "sayThis", sources, created_at as "createdAt" """
 
 
 class ImageInput(BaseModel):
@@ -178,10 +179,10 @@ def create_check(body: CheckInput, user: User):
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "The checker is unavailable right now.")
 
     row = one(
-        f"""insert into checks (user_id, kind, verdict, confidence, scam_type, headline, reasons, next_steps, say_this)
-            values (%(userId)s, %(kind)s, %(verdict)s, %(confidence)s, %(scamType)s, %(headline)s, %(reasons)s, %(nextSteps)s, %(sayThis)s)
+        f"""insert into checks (user_id, kind, verdict, confidence, scam_type, headline, reasons, next_steps, say_this, sources)
+            values (%(userId)s, %(kind)s, %(verdict)s, %(confidence)s, %(scamType)s, %(headline)s, %(reasons)s, %(nextSteps)s, %(sayThis)s, %(sources)s)
             returning {_CHECK_FIELDS}""",
-        {**result, "userId": user.id},
+        {**result, "sources": Jsonb(result["sources"]), "userId": user.id},
     )
 
     # Consent-based alerts: a Stop reaches guardians only where the protected person chose to share it.
@@ -234,7 +235,7 @@ def alert_guardians(check_id: uuid.UUID, user: User):
     )
     if not links:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You haven’t linked any family yet.")
-    detail = f"Asked you to look at a {'message' if check['verdict'] == 'safe' else 'possible scam'}"
+    detail = f"Asked you to look at a {({'safe': 'message', 'info': 'scam warning'}).get(check['verdict'], 'possible scam')}"
     for link in links:
         _push_alert(link["id"], user.row["name"], "asked_for_help", check_id, detail)
     return [link["guardian_name"] for link in links]
@@ -598,7 +599,7 @@ def admin_dashboard(_: Admin):
     for r in query("select role, count(*) as n from profiles group by role"):
         users_by_role[r["role"]] = r["n"]
 
-    checks_by_verdict = {"stop": 0, "wait": 0, "safe": 0}
+    checks_by_verdict = {"stop": 0, "wait": 0, "safe": 0, "info": 0}
     for r in query("select verdict, count(*) as n from checks group by verdict"):
         checks_by_verdict[r["verdict"]] = r["n"]
 

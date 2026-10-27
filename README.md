@@ -57,7 +57,7 @@ Scammers in South Africa go after the moment between reading a message and actin
 
 | Feature | |
 |---|---|
-| **Check** (the AI feature) | Paste a message, share a **screenshot**, or **speak** what a caller is saying. A short breathing pause (at least 3 s, deliberately) gives way to a verdict with reasons, next steps and, for calls, a "Say this, then hang up" line. Ask follow-up questions about any verdict in a chat that's saved to History. |
+| **Check** (the AI feature) | Paste a message, share a **screenshot**, or **speak** what a caller is saying. A short breathing pause (at least 3 s, deliberately) gives way to a verdict with reasons, next steps and, for calls, a "Say this, then hang up" line. A genuine warning *about* a scam (a poster, a news report) gets a grey **Scam warning**, never a green tick; a fake "warning" is a Stop. Verdicts cite **official sources** (SABRIC, SASSA, SARS, AARTO, FSCA and others) from a vetted list, so the AI can't invent a link, and link to the in-app guide on how that scam takes your money. Ask follow-up questions about any verdict in a chat that's saved to History. |
 | **Family** | A guardian invites someone with a 6-character code or a WhatsApp share. Accepting shows exactly what is and isn't shared. Per-person sharing toggles, stop sharing any time. A Stop verdict alerts guardians **only if the person agreed**. "Tell my family" sends any check on purpose. |
 | **Scam map** | Approved community reports per suburb as a heat map, filterable by scam type, with a ranked list of areas. Never more precise than a suburb. |
 | **Report a scam** | Create, edit and delete your own reports. Every report is moderated before it reaches the map, and an edited report goes back to review. |
