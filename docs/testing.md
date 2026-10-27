@@ -17,7 +17,8 @@ Every bug found and fixed, newest first. Each fix is its own commit, so the comm
 
 | Date | What went wrong | How it showed up | Fix |
 |---|---|---|---|
-| 27 Oct | The "Speak" button returned the same canned transcript whatever was said, so it could even produce a Stop and a family alert for a call that never happened | Final review against the brief | `77054fd`, `c6d7290`: real speech-to-text (Whisper on Cloudflare Workers AI). Unit-tested; one live recording still to run once the Cloudflare keys are set. |
+| 27 Oct | A silent recording came back as the word "You" (Whisper invents words when there's no speech) | Live voice test | `1e1716c`: voice-activity filter on, so silence gets "We didn't catch any words" |
+| 27 Oct | The "Speak" button returned the same canned transcript whatever was said, so it could even produce a Stop and a family alert for a call that never happened | Final review against the brief | `77054fd`, `c6d7290`: real speech-to-text (Whisper on Cloudflare Workers AI). Tested live with phone (m4a), browser (webm) and wav recordings. |
 | 27 Oct | Admins couldn't see who was using the app or what they were doing; the activity list had no names and covered only three event types | Final review against the brief | `2fb37eb`, `c851588` |
 | 27 Oct | Some demo reports read "SMS about…" but were filed as phone calls: the seed picked the story and the channel separately | Taking README screenshots | `bb9edc0` |
 | 27 Oct | Learn said "1 reports in your area" | Taking README screenshots | `4a32d79` |
