@@ -119,6 +119,8 @@ _PROFILE_COLUMNS = {"name": "name", "phone": "phone", "simpleMode": "simple_mode
 @app.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 def delete_me(user: User):
     """POPIA-style right to erasure: the person removes their own account and everything tied to it."""
+    if user.row["email"].endswith("@onhold.test"):  # the public demo shares these sign-ins
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Demo accounts can’t be deleted.")
     if _is_last_admin(user.id):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You’re the last admin, so you can’t delete your account.")
     _delete_auth_user(user.id)
@@ -521,15 +523,47 @@ def mark_alerts_seen(user: User):
 
 # ---------- Admin: dashboard ----------
 
+# Everything people do, derived from the tables that already record it -- no separate
+# event log to keep in sync. Content stays private: a check shows its verdict headline,
+# never the message, and a follow-up chat shows only that a question was asked.
 _ACTIVITY_SQL = """
-    (select 'check' as type, id::text as id, headline as summary, created_at as "createdAt" from checks)
-    union all
-    (select 'report' as type, id::text as id, description as summary, created_at as "createdAt" from reports)
-    union all
-    (select 'signup' as type, id::text as id, name as summary, created_at as "createdAt" from profiles)
-    order by "createdAt" desc
-    limit 20
+    select a.type, a.id, a.user_id as "userId", p.name as "userName", a.summary, a.created_at as "createdAt"
+    from (
+        select 'signup' as type, id::text as id, id as user_id, 'Joined On Hold' as summary, created_at from profiles
+        union all
+        select 'signin', id::text, id, 'Signed in', last_sign_in_at from auth.users where last_sign_in_at is not null
+        union all
+        select 'check', id::text, user_id, 'Checked a ' || kind || ': ' || headline, created_at from checks
+        union all
+        select 'chat', c.id::text, c.user_id, 'Asked a follow-up question about a check', m.created_at
+            from check_messages m join checks c on c.id = m.check_id where m.role = 'user'
+        union all
+        select 'report', id::text, reporter_id, 'Reported a scam in ' || suburb, created_at from reports
+        union all
+        select 'moderation', id::text, moderated_by,
+               case status when 'approved' then 'Approved' else 'Rejected' end || ' a report from ' || suburb, moderated_at
+            from reports where moderated_by is not null and status != 'pending'
+        union all
+        select 'invite', id::text, guardian_id, 'Invited ' || protected_name || ' to be looked after', created_at from guardian_links
+        union all
+        select 'family', l.id::text, l.protected_id, 'Accepted ' || gp.name || '’s invite', a.created_at
+            from alerts a join guardian_links l on l.id = a.link_id join profiles gp on gp.id = l.guardian_id
+            where a.type = 'invite_accepted'
+        union all
+        select 'help', l.id::text, l.protected_id, 'Asked their family for help with a check', a.created_at
+            from alerts a join guardian_links l on l.id = a.link_id where a.type = 'asked_for_help'
+    ) a join profiles p on p.id = a.user_id
+    where (%(userId)s::uuid is null or a.user_id = %(userId)s::uuid)
+      and (%(type)s::text is null or a.type = %(type)s::text)
+    order by a.created_at desc
+    limit %(limit)s offset %(offset)s
 """
+
+ActivityType = Literal["signup", "signin", "check", "chat", "report", "moderation", "invite", "family", "help"]
+
+
+def _activity(user_id: uuid.UUID | None = None, type: str | None = None, limit: int = 20, offset: int = 0):
+    return query(_ACTIVITY_SQL, {"userId": user_id, "type": type, "limit": limit, "offset": offset})
 
 _TREND_SQL = """
     select to_char(d.day, 'YYYY-MM-DD') as date, coalesce(r.n, 0) as count
@@ -557,27 +591,44 @@ def admin_dashboard(_: Admin):
     for r in query("select status, count(*) as n from reports group by status"):
         reports_by_status[r["status"]] = r["n"]
 
-    checks_last_7_days = one("select count(*) as n from checks where created_at > now() - interval '7 days'")["n"]
-    ai_calls_last_24h = one("select count(*) as n from ai_calls where created_at > now() - interval '24 hours'")["n"]
+    recent = one(
+        """select (select count(*) from checks where created_at > now() - interval '7 days') as checks,
+                  (select count(*) from ai_calls where created_at > now() - interval '24 hours') as ai,
+                  (select count(*) from profiles where created_at > now() - interval '7 days') as joined,
+                  (select count(*) from profiles where last_seen_at > now() - interval '7 days') as active"""
+    )
 
     return {
-        "users": {"total": sum(users_by_role.values()), "byRole": users_by_role},
-        "checks": {"total": sum(checks_by_verdict.values()), "byVerdict": checks_by_verdict, "last7Days": checks_last_7_days},
+        "users": {"total": sum(users_by_role.values()), "byRole": users_by_role, "new7Days": recent["joined"], "active7Days": recent["active"]},
+        "checks": {"total": sum(checks_by_verdict.values()), "byVerdict": checks_by_verdict, "last7Days": recent["checks"]},
         "reports": {"total": sum(reports_by_status.values()), "byStatus": reports_by_status},
-        "aiCallsLast24h": ai_calls_last_24h,
+        "aiCallsLast24h": recent["ai"],
         "trend": query(_TREND_SQL),
-        "activity": query(_ACTIVITY_SQL),
+        "activity": _activity(limit=12),
     }
+
+
+@app.get("/admin/activity")
+def admin_activity(_: Admin, userId: uuid.UUID | None = None, type: ActivityType | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
+    return _activity(userId, type, limit, offset)
 
 
 # ---------- Admin: reports (full CRUD + moderation) ----------
 
-_ADMIN_REPORT_FIELDS = _REPORT_FIELDS + ', moderated_by as "moderatedBy", moderated_at as "moderatedAt"'
+_ADMIN_REPORT_FIELDS = _REPORT_FIELDS + """, moderated_by as "moderatedBy", moderated_at as "moderatedAt",
+    (select name from profiles p where p.id = reports.reporter_id) as "reporterName",
+    (select name from profiles p where p.id = reports.moderated_by) as "moderatorName" """
 
 
 @app.get("/admin/reports")
 def list_all_reports(
-    _: Admin, status: ReportStatus | None = None, scamType: ScamType | None = None, search: str | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)
+    _: Admin,
+    status: ReportStatus | None = None,
+    scamType: ScamType | None = None,
+    search: str | None = None,
+    reporterId: uuid.UUID | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ):
     pattern = f"%{search}%" if search else None
     return query(
@@ -585,9 +636,10 @@ def list_all_reports(
             where (%(status)s::report_status is null or status = %(status)s::report_status)
               and (%(scamType)s::scam_type is null or scam_type = %(scamType)s::scam_type)
               and (%(pattern)s::text is null or description ilike %(pattern)s)
+              and (%(reporterId)s::uuid is null or reporter_id = %(reporterId)s::uuid)
             order by created_at desc
             limit %(limit)s offset %(offset)s""",
-        {"status": status, "scamType": scamType, "pattern": pattern, "limit": limit, "offset": offset},
+        {"status": status, "scamType": scamType, "pattern": pattern, "reporterId": reporterId, "limit": limit, "offset": offset},
     )
 
 
@@ -635,17 +687,20 @@ def moderate_report(report_id: uuid.UUID, body: ModerateInput, admin: Admin):
 
 # ---------- Admin: users ----------
 
-_USER_FIELDS = """id, name, email, phone, role, simple_mode as "simpleMode", suburb, created_at as "createdAt" """
+# Last active = the later of their last API call and their last sign-in (seeded people have only the first).
+_USER_FIELDS = """id, name, email, phone, role, simple_mode as "simpleMode", suburb, created_at as "createdAt",
+    greatest(last_seen_at, (select u.last_sign_in_at from auth.users u where u.id = profiles.id)) as "lastSeenAt" """
 
 
 @app.get("/admin/users")
 def list_users(_: Admin, search: str | None = None, role: Role | None = None, limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
+    """Most recently active first, so an admin sees who's using it right now."""
     pattern = f"%{search}%" if search else None
     return query(
         f"""select {_USER_FIELDS} from profiles
             where (%(pattern)s::text is null or name ilike %(pattern)s or email ilike %(pattern)s)
               and (%(role)s::role is null or role = %(role)s::role)
-            order by created_at desc
+            order by "lastSeenAt" desc nulls last, created_at desc
             limit %(limit)s offset %(offset)s""",
         {"pattern": pattern, "role": role, "limit": limit, "offset": offset},
     )
@@ -653,8 +708,62 @@ def list_users(_: Admin, search: str | None = None, role: Role | None = None, li
 
 @app.get("/admin/users/{user_id}")
 def get_user(user_id: uuid.UUID, _: Admin):
-    row = one(f"select {_USER_FIELDS} from profiles where id = %(id)s", {"id": user_id})
-    return _found(row, "We couldn’t find that user.")
+    """One person at a glance: who they are, what they've done, who they're linked to."""
+    row = one(
+        f"""select {_USER_FIELDS},
+               (select count(*) from checks where user_id = profiles.id) as "checkCount",
+               (select count(*) from checks where user_id = profiles.id and verdict = 'stop') as "stopCount",
+               (select count(*) from reports where reporter_id = profiles.id) as "reportCount",
+               (select count(*) from ai_calls where user_id = profiles.id and created_at > now() - interval '7 days') as "aiCalls7Days",
+               (select coalesce(json_agg(f order by f."createdAt" desc), '[]'::json) from (
+                   select l.id, 'looksAfter' as relation, l.protected_id as "personId", coalesce(pp.name, l.protected_name) as name,
+                          l.status, l.created_at as "createdAt"
+                   from guardian_links l left join profiles pp on pp.id = l.protected_id where l.guardian_id = profiles.id
+                   union all
+                   select l.id, 'lookedAfterBy', l.guardian_id, gp.name, l.status, l.created_at
+                   from guardian_links l join profiles gp on gp.id = l.guardian_id where l.protected_id = profiles.id
+               ) f) as family
+           from profiles where id = %(id)s""",
+        {"id": user_id},
+    )
+    row = _found(row, "We couldn’t find that user.")
+    row["activity"] = _activity(user_id, limit=50)
+    return row
+
+
+def _auth_admin(method: str, path: str, **kwargs) -> httpx.Response:
+    """Supabase Auth's admin API -- the one thing the DB connection can't do (accounts live in auth.users)."""
+    settings = get_settings()
+    key = settings.supabase_service_role_key
+    return httpx.request(method, f"{settings.supabase_url}/auth/v1/admin{path}", headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=15, **kwargs)
+
+
+class NewUserInput(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    email: str = Field(max_length=200, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    role: Role
+    suburb: str | None = None
+
+
+@app.post("/admin/users", status_code=status.HTTP_201_CREATED)
+def create_user(body: NewUserInput, _: Admin):
+    """Adds someone who can't sign up themselves (say, a parent without email confidence).
+    They get a one-time password the admin passes on; it's shown once and never stored here."""
+    _require_suburb(body.suburb)
+    password = secrets.token_urlsafe(9)
+    res = _auth_admin(
+        "POST", "/users", json={"email": body.email.strip().lower(), "password": password, "email_confirm": True, "user_metadata": {"name": body.name.strip()}}
+    )
+    if res.status_code == 422:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Someone already uses that email.")
+    if res.status_code not in (200, 201):
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Couldn’t create that account right now.")
+    # The signup trigger made the profile; set what it can't (admin is never granted by the trigger).
+    row = one(
+        f"update profiles set role = %(role)s, suburb = %(suburb)s where id = %(id)s returning {_USER_FIELDS}",
+        {"role": body.role, "suburb": body.suburb, "id": res.json()["id"]},
+    )
+    return {"user": row, "tempPassword": password}
 
 
 def _is_last_admin(user_id: uuid.UUID) -> bool:
@@ -665,21 +774,31 @@ def _is_last_admin(user_id: uuid.UUID) -> bool:
     return remaining["n"] == 0
 
 
-class RoleInput(BaseModel):
-    role: Role
+class UserPatch(BaseModel):
+    name: str = Field(default=None, min_length=1, max_length=100)
+    phone: str | None = Field(default=None, max_length=30)
+    suburb: str | None = None
+    role: Role = None
 
 
 @app.patch("/admin/users/{user_id}")
-def update_user_role(user_id: uuid.UUID, body: RoleInput, admin: Admin):
-    if user_id == admin.id:
+def update_user(user_id: uuid.UUID, body: UserPatch, admin: Admin):
+    patch = body.model_dump(exclude_unset=True)
+    if "role" in patch and user_id == admin.id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can’t change your own role.")
+    if "suburb" in patch:
+        _require_suburb(patch["suburb"])
+    if "phone" in patch:
+        patch["phone"] = (patch["phone"] or "").strip() or None
     with transaction() as cur:
-        if body.role != "admin":
+        if "role" in patch and patch["role"] != "admin":
             # FOR UPDATE makes a concurrent demotion wait and then re-count, so the two can't both pass.
             cur.execute("select id from profiles where role = 'admin' for update")
             if {r["id"] for r in cur.fetchall()} == {user_id}:
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, "Can’t remove the last admin.")
-        cur.execute(f"update profiles set role = %(role)s where id = %(id)s returning {_USER_FIELDS}", {"role": body.role, "id": user_id})
+        columns = {**_PROFILE_COLUMNS, "role": "role"}
+        set_clause = ", ".join(f"{columns[k]} = %({k})s" for k in patch) or "id = id"
+        cur.execute(f"update profiles set {set_clause} where id = %(id)s returning {_USER_FIELDS}", {**patch, "id": user_id})
         row = cur.fetchone()
     return _found(row, "We couldn’t find that user.")
 
@@ -699,13 +818,7 @@ def _delete_auth_user(user_id: uuid.UUID):
     """Deleting only the profile row would orphan a still-signable-in auth account;
     deleting the auth user cascades to profiles (and from there to their checks,
     chats, reports, guardian links and alerts)."""
-    settings = get_settings()
-    res = httpx.delete(
-        f"{settings.supabase_url}/auth/v1/admin/users/{user_id}",
-        headers={"apikey": settings.supabase_service_role_key, "Authorization": f"Bearer {settings.supabase_service_role_key}"},
-        timeout=15,
-    )
-    if res.status_code not in (200, 204):
+    if _auth_admin("DELETE", f"/users/{user_id}").status_code not in (200, 204):
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Couldn’t delete that account right now.")
 
 
