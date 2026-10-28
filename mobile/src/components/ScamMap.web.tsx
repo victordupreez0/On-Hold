@@ -18,7 +18,7 @@ function FlyTo({ lat, lng }: { lat: number; lng: number }) {
   return null;
 }
 
-/** Web map for the browser preview. ponytail: public OSM tiles, swap for a keyed tile provider before launch. */
+/** Web map for the browser preview. Limitation: public OSM tiles, swap for a keyed tile provider before launch. */
 export function ScamMap({ areas, selected, onSelect, center }: ScamMapProps) {
   const focus = areas.find((a) => a.name === selected);
   const max = Math.max(1, ...areas.map((a) => a.count));
