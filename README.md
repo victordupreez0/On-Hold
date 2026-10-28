@@ -43,18 +43,9 @@ An AI scam checker for older South Africans. Paste a message, share a screenshot
 
 DV300 Theme 4 (AI-Driven Application) · Social Impact and Accessibility · Victor du Preez (241250) · Open Window, 2026
 
-## Presentation Video
-
-<!--
-  To finish this section: upload the presentation as an unlisted YouTube video (or a Google Drive
-  file set to "Anyone with the link can view"), replace PRESENTATION_LINK below, then delete this comment.
--->
-
-**[Watch the presentation video](PRESENTATION_LINK)**: introduction and concept, the app demo, a technical walkthrough of the code, and process and reflection.
-
 ## Contents
 
-[Presentation video](#presentation-video) · [The problem](#the-problem) · [What it does](#what-it-does) · [Screenshots](#screenshots) · [Demo video](#demo-video) · [Using the app](#using-the-app) · [How it works](#how-it-works) · [Run it yourself](#run-it-yourself) · [Deployment](#deployment) · [Technologies](#technologies) · [Security and privacy](#security-and-privacy) · [Testing](#testing) · [Project management](#project-management) · [Acknowledgements](#acknowledgements)
+[The problem](#the-problem) · [What it does](#what-it-does) · [Screenshots](#screenshots) · [Demo video](#demo-video) · [Using the app](#using-the-app) · [How it works](#how-it-works) · [Run it yourself](#run-it-yourself) · [Deployment](#deployment) · [Technologies](#technologies) · [Security and privacy](#security-and-privacy) · [Testing](#testing) · [Project management](#project-management) · [Acknowledgements](#acknowledgements)
 
 ## The problem
 
@@ -128,9 +119,6 @@ Scammers in South Africa go after the moment between reading a message and actin
 [![Watch the On Hold demo](https://img.youtube.com/vi/VIDEO_ID/maxresdefault.jpg)](https://youtu.be/VIDEO_ID)
 
 A 6-minute walkthrough: signing in, checking a message, a screenshot and a call, a Stop reaching family, the map and Learn, and the admin panel (dashboard, activity, users, moderation).
-
-The presentation slides are in [presentation/](presentation): [On-Hold-Presentation.pdf](presentation/On-Hold-Presentation.pdf), or open [on-hold-presentation.html](presentation/on-hold-presentation.html) in a browser (arrow keys to move, F for full screen). The [run sheet](presentation/On-Hold-Run-Sheet.pdf) has the demo script.
-
 ## Using the app
 
 Try it on the [website](https://onhold.pages.dev): the phone on the page is the real app. The demo accounts, all with password **onhold-demo**, are:
@@ -196,7 +184,6 @@ On-Hold/
 ├── website/         The landing page (plain HTML, CSS, JS), with the live app in a phone frame.
 ├── supabase/        The database schema, as SQL migrations.
 ├── docs/            The testing log and README screenshots.
-├── presentation/    The final presentation slides and run sheet.
 └── .github/         CI: lint, type check and tests on every push.
 ```
 
