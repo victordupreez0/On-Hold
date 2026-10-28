@@ -36,24 +36,24 @@
   <table>
     <tr><th>When</th><th>Slides</th><th>What to get across</th></tr>
     <tr><td class="t">0:00</td><td>1–5</td><td>R2.4 billion lost to digital banking crime in 2025; scams win in the moment before someone checks. On Hold is for older South Africans and their families: one question, a plain verdict, family told only by consent.</td></tr>
-    <tr><td class="t">3:00</td><td>6 · Live demo</td><td>Show, don’t tell. Follow the script below; slide 6 is your on-screen checklist.</td></tr>
+    <tr><td class="t">3:00</td><td>6 · Demo video</td><td>Play the video (about 7 minutes). Slide 6 lists what it shows; talk over it or let it run.</td></tr>
     <tr><td class="t">10:00</td><td>7–14</td><td>Architecture, the AI as the core feature, the accuracy test, trust and security, CRUD, process, feedback, what’s next. About 25 seconds a slide.</td></tr>
     <tr><td class="t">13:30</td><td>15</td><td>Questions. Offer to open the code (see the table on the next page).</td></tr>
   </table>
 
-  <h2>Before you present (morning)</h2>
+  <h2>Before you record, and before you present</h2>
   <ol>
-    <li>Fresh demo data, and reset Marie’s and Pieter’s hourly AI limit: <code>cd backend</code> then <code>uv run python -m scripts.seed</code></li>
+    <li>Before the final take, fresh demo data and Marie’s and Pieter’s hourly AI limit reset: <code>cd backend</code> then <code>uv run python -m scripts.seed</code></li>
     <li>Check the live API: <code>on-hold-ashen.vercel.app/health</code> should show <code>claude-haiku-5-5</code>.</li>
     <li>Fill in the peer feedback on slide 13 (three rows), then re-export the PDF.</li>
     <li>The scam screenshot for demo step 3 is ready: <code>presentation/demo-scam-sms.png</code> (a fake SASSA SMS; the live app gives it a Stop).</li>
     <li>Allow the microphone for onhold.pages.dev and try Speak once.</li>
-    <li>Tabs ready: onhold.pages.dev · the app signed in as admin in a second browser profile · GitHub repo · the demo video (backup).</li>
+    <li>For recording: onhold.pages.dev, and the app signed in as admin in a second browser profile. Browser zoom about 125% so the phone reads well on video. Notifications off.</li>
+    <li>For presenting: the slides, the demo video file (its YouTube link as a backup), the GitHub repo.</li>
     <li>Editor open on <code>backend/app/ai.py</code>, <code>backend/app/main.py</code>, <code>backend/scripts/eval.py</code>, <code>mobile/src/screens/CheckResult.tsx</code>.</li>
-    <li>Browser zoom about 125% so the back row can read the phone. Notifications off.</li>
   </ol>
 
-  <h2>Live demo script (about 7 minutes)</h2>
+  <h2>Recording script for the demo video (about 7 minutes)</h2>
   <div class="step"><span class="n">1</span><div><b>Website</b> <b class="time">· 30 s</b><br>Open onhold.pages.dev. “This is deployed: the website and app on Cloudflare Pages, the API on Vercel, data on Supabase.” Tap <b>Try the demo</b> in the phone.</div></div>
   <div class="step"><span class="n">2</span><div><b>Marie checks a WhatsApp</b> <b class="time">· 1½ min</b><br>Tap the <b>Marie</b> chip → Sign in. Home → <b>Check something</b>, paste:
     <span class="say">Hi Ma, it’s me. My phone fell in the water so this is my new number. Can you send R2,500 for a supplier urgently? I’ll pay you back tomorrow. Don’t tell Dad.</span>
@@ -71,7 +71,7 @@
   <div class="step"><span class="n">6</span><div><b>Report it, the map, Learn</b> <b class="time">· 1 min</b><br>Home → History → open the Stop from step 2 → <b>Report it</b> → submit (“it waits for a moderator”). <b>Map</b>: heat by suburb, filter by type. <b>Learn</b>: what’s going around, the guides.</div></div>
   <div class="step"><span class="n">7</span><div><b>Pieter, the guardian</b> <b class="time">· 30 s</b><br>Tap the circle with Marie’s initial (top right of Home) → <b>Sign out</b> → <b>Pieter</b> chip → <b>Needs you</b> shows Marie’s Stop and her Tell-family request.</div></div>
   <div class="step"><span class="n">8</span><div><b>Admin</b> <b class="time">· 1½ min</b><br>Switch to the admin tab (admin@onhold.test, your private password) → <b>Admin panel</b>: <b>Dashboard</b> (counts per verdict, the 14-day trend) → <b>Activity</b> (Marie’s check and report from a minute ago) → <b>Reports</b>: approve Marie’s report, now on the map → <b>People</b> → Marie: history, family, activity.</div></div>
-  <p class="warn"><b>If anything fails:</b> say so calmly, switch to the demo video tab, and carry on from the same step. The API answers in about 3 seconds; a first request after a quiet spell can take 5.</p>
+  <p class="warn"><b>If a take goes wrong:</b> reseed for fresh data and record that step again. A check takes about 4 seconds; the first after a quiet spell can take 5–6. On the day, if the video file won’t play, open its YouTube link.</p>
 
   <h2>Likely questions, and what to open</h2>
   <table class="qa">

@@ -39,7 +39,7 @@ _MAX_BODY_BYTES = 4_500_000  # Vercel's own request cap; matching it means our f
 @app.middleware("http")
 async def limit_body_size(request: Request, call_next):
     """FastAPI reads the whole body before auth runs, so cap it before anything else does.
-    ponytail: trusts Content-Length; a chunked upload without one is left to the hosting proxy."""
+    Limitation: trusts Content-Length; a chunked upload without one is left to the hosting proxy."""
     if int(request.headers.get("content-length") or 0) > _MAX_BODY_BYTES:
         return JSONResponse({"detail": "That’s too big to send. Try a screenshot instead of a photo."}, status_code=413)
     return await call_next(request)
