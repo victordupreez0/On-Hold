@@ -46,7 +46,7 @@
     <li>Fresh demo data, and reset Marie’s and Pieter’s hourly AI limit: <code>cd backend</code> then <code>uv run python -m scripts.seed</code></li>
     <li>Check the live API: <code>on-hold-ashen.vercel.app/health</code> should show <code>claude-haiku-5-5</code>.</li>
     <li>Fill in the peer feedback on slide 13 (three rows), then re-export the PDF.</li>
-    <li>Save a scam screenshot on the laptop (e.g. a fake SASSA “payment on hold” SMS) for demo step 3.</li>
+    <li>The scam screenshot for demo step 3 is ready: <code>presentation/demo-scam-sms.png</code> (a fake SASSA SMS; the live app gives it a Stop).</li>
     <li>Allow the microphone for onhold.pages.dev and try Speak once.</li>
     <li>Tabs ready: onhold.pages.dev · the app signed in as admin in a second browser profile · GitHub repo · the demo video (backup).</li>
     <li>Editor open on <code>backend/app/ai.py</code>, <code>backend/app/main.py</code>, <code>backend/scripts/eval.py</code>, <code>mobile/src/screens/CheckResult.tsx</code>.</li>
@@ -58,7 +58,7 @@
   <div class="step"><span class="n">2</span><div><b>Marie checks a WhatsApp</b> <b class="time">· 1½ min</b><br>Tap the <b>Marie</b> chip → Sign in. Home → <b>Check something</b>, paste:
     <span class="say">Hi Ma, it’s me. My phone fell in the water so this is my new number. Can you send R2,500 for a supplier urgently? I’ll pay you back tomorrow. Don’t tell Dad.</span>
     <b>Check it</b>. Point out the breathing pause (on purpose, at least 3 seconds). <b>Stop</b> → open <b>Why we think this</b> → <b>Official advice</b> (a vetted source) → <b>How this scam takes your money</b> (the dark “what they’re counting on” card) → back → <b>Tell family</b>.</div></div>
-  <div class="step"><span class="n">3</span><div><b>A screenshot</b> <b class="time">· 45 s</b><br>Check → <b>Screenshot</b> → pick the saved scam image → Check it → Stop.</div></div>
+  <div class="step"><span class="n">3</span><div><b>A screenshot</b> <b class="time">· 45 s</b><br>Check → <b>Screenshot</b> → pick <code>presentation/demo-scam-sms.png</code> → Check it → Stop, citing SASSA.</div></div>
   <div class="step"><span class="n">4</span><div><b>A call in progress</b> <b class="time">· 1 min</b><br>Home → <b>Someone on the phone right now?</b> → <b>Speak</b> and say:
     <span class="say">A man says he’s from my bank’s fraud department and he wants the code they just sent me.</span>
     Fix any words, Check it → <b>Say this, then hang up</b>. (Mic fails? Type it.)</div></div>
