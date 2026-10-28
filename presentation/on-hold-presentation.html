@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>On Hold · Final presentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root {
+    --y: #FFE45C; --yd: #E3C43A; --ink: #1A1A1A; --soft: #55554F; --paper: #FBFAF5;
+    --grey: #F1F0EA; --line: #E2E2DC; --stop: #E0271F; --wait: #FFB400; --safe: #0A9A4A; --info: #55554F;
+    --onink: #F4F1E6; --onink-soft: #B9B6AA;
+  }
+  @page { size: 1920px 1080px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #262622; }
+  body { font-family: 'Atkinson Hyperlegible Next', Arial, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  .slide { width: 1920px; height: 1080px; position: relative; overflow: hidden; isolation: isolate; background: var(--paper); padding: 104px 128px 150px; display: flex; flex-direction: column; }
+  .dark { background: var(--ink); color: var(--onink); }
+  .yellow { background: var(--y); }
+
+  .eyebrow { font-size: 24px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--soft); }
+  .dark .eyebrow { color: var(--y); }
+  h2 { font-size: 72px; line-height: 1.08; font-weight: 800; letter-spacing: -0.02em; margin-top: 18px; }
+  .lead { font-size: 36px; line-height: 1.4; color: var(--soft); }
+  .dark .lead { color: var(--onink-soft); }
+  p { font-size: 32px; line-height: 1.4; }
+  b { font-weight: 800; }
+
+  .foot { position: absolute; left: 128px; right: 128px; bottom: 56px; display: flex; justify-content: space-between; align-items: center; font-size: 24px; color: var(--soft); }
+  .dark .foot { color: var(--onink-soft); }
+  .foot .mark { display: flex; align-items: center; gap: 12px; font-weight: 800; color: var(--ink); }
+  .dark .foot .mark { color: var(--onink); }
+  .foot svg { width: 34px; height: 34px; }
+  .src { font-size: 24px; color: var(--soft); }
+
+  .logo { --logo-halo: #D6D6CF; --logo-ring: var(--ink); --logo-bars: var(--yd); }
+  .dark .logo { --logo-halo: #4A4A44; --logo-ring: var(--onink); --logo-bars: var(--y); }
+
+  /* Phone mock around a real screenshot */
+  .phone { width: 360px; padding: 12px; border-radius: 60px; background: var(--ink); box-shadow: inset 0 0 0 2px #3C3C39, 0 50px 80px -40px rgba(26,26,26,.55), 0 20px 30px -20px rgba(26,26,26,.4); flex: none; }
+  .phone img { display: block; width: 100%; border-radius: 48px; }
+  .phone.sm { width: 318px; border-radius: 54px; } .phone.sm img { border-radius: 43px; }
+  .phone.xs { width: 262px; padding: 10px; border-radius: 46px; } .phone.xs img { border-radius: 37px; }
+
+  .pill { display: inline-flex; align-items: center; gap: 12px; padding: 14px 26px; border-radius: 999px; font-size: 30px; font-weight: 800; }
+  .card { background: #fff; border: 2px solid var(--line); border-radius: 28px; padding: 36px 40px; }
+  .num { width: 56px; height: 56px; border-radius: 50%; background: var(--y); color: var(--ink); display: grid; place-items: center; font-size: 28px; font-weight: 800; flex: none; }
+
+  /* 1 · Cover */
+  .cover { padding: 0; display: grid; grid-template-columns: 1040px 1fr; }
+  .cover-left { padding: 104px 0 0 128px; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 18px; font-size: 44px; font-weight: 800; letter-spacing: -0.02em; }
+  .brand svg { width: 72px; height: 72px; }
+  .cover h1 { font-size: 140px; line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; margin-top: 150px; }
+  .hl { background: linear-gradient(transparent 58%, var(--y) 58%); padding: 0 6px; margin: 0 -6px; }
+  .cover .lead { margin-top: 44px; font-size: 40px; color: var(--ink); }
+  .cover-meta { position: absolute; left: 128px; bottom: 72px; font-size: 26px; color: var(--soft); line-height: 1.5; }
+  .cover-right { background: var(--y); position: relative; display: grid; place-items: center; }
+  .cover-right .ring { position: absolute; width: 1100px; height: 1100px; left: -120px; top: -10px; --logo-halo: #F5D649; --logo-ring: #F5D649; --logo-bars: transparent; opacity: .9; }
+  .cover-right .phone { position: relative; transform: rotate(-3deg); }
+
+  /* 2 · Problem */
+  .big { font-size: 230px; line-height: 0.95; font-weight: 800; letter-spacing: -0.05em; margin-top: 30px; }
+  .big-sub { font-size: 44px; line-height: 1.25; font-weight: 600; margin-top: 18px; max-width: 1200px; }
+  .facts { display: grid; grid-template-columns: 520px 1fr; gap: 40px; margin-top: 64px; }
+  .fact-n { font-size: 96px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+  .fact p { font-size: 30px; margin-top: 12px; color: var(--soft); }
+  .quote { font-size: 36px; line-height: 1.35; font-weight: 600; border-left: 10px solid var(--y); padding-left: 32px; }
+  .who { font-size: 26px !important; color: var(--soft); padding-left: 42px; }
+  .kicker { margin-top: auto; font-size: 44px; font-weight: 800; line-height: 1.2; }
+
+  /* 3 · The moment */
+  .msgs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; margin-top: 56px; }
+  .msg { background: #2A2A27; border-radius: 28px; padding: 32px 36px; display: flex; flex-direction: column; gap: 14px; }
+  .msg .ch { font-size: 24px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--y); }
+  .msg p { font-size: 32px; color: var(--onink); }
+  .tricks { display: flex; gap: 18px; margin-top: 48px; align-items: center; }
+  .trick { font-size: 28px; font-weight: 800; padding: 10px 24px; border-radius: 999px; border: 2px solid #4A4A44; color: var(--onink); }
+
+  /* 4 · Who */
+  .people { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 56px; }
+  .person { display: flex; flex-direction: column; gap: 18px; }
+  .person .role { font-size: 24px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+  .person h3 { font-size: 40px; line-height: 1.15; font-weight: 800; }
+  .person p { font-size: 28px; color: var(--soft); }
+  .icon { width: 72px; height: 72px; border-radius: 22px; background: var(--y); display: grid; place-items: center; }
+  .icon svg { width: 38px; height: 38px; fill: none; stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .access { margin-top: 44px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .access span { font-size: 26px; font-weight: 600; background: var(--grey); padding: 10px 22px; border-radius: 999px; }
+
+  /* 5 · The answer */
+  .two { display: grid; grid-template-columns: 1fr auto; gap: 72px; align-items: center; flex: 1; }
+  .steps { display: flex; flex-direction: column; gap: 26px; margin-top: 44px; }
+  .step { display: flex; gap: 24px; align-items: flex-start; }
+  .step p { font-size: 30px; }
+  .verdicts { display: flex; gap: 14px; margin-top: 44px; flex-wrap: wrap; }
+  .phones { display: flex; gap: 28px; align-items: flex-start; }
+  .phones .phone:nth-child(2) { margin-top: 56px; }
+
+  /* 6 · Demo */
+  .demo h2 { font-size: 150px; letter-spacing: -0.045em; margin-top: 8px; }
+  .run { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 64px; margin-top: 56px; }
+  .run .step p { font-size: 32px; }
+  .run .num { background: var(--ink); color: var(--y); }
+  .backup { margin-top: auto; font-size: 26px; font-weight: 600; }
+
+  /* 7 · Architecture */
+  .arch { position: relative; height: 700px; margin-top: 40px; }
+  .box { position: absolute; width: 440px; border-radius: 28px; padding: 30px 34px; background: #fff; border: 2px solid var(--line); }
+  .box .k { font-size: 24px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--soft); }
+  .box h3 { font-size: 36px; font-weight: 800; line-height: 1.15; margin-top: 8px; }
+  .box p { font-size: 26px; color: var(--soft); margin-top: 8px; line-height: 1.35; }
+  .box.ai { background: var(--ink); border-color: var(--ink); color: var(--onink); }
+  .box.ai .k { color: var(--y); } .box.ai p { color: var(--onink-soft); }
+  .wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .wlabel { position: absolute; font-size: 24px; font-weight: 600; color: var(--soft); background: var(--paper); padding: 2px 10px; }
+
+  /* 8 · AI core */
+  .ai-grid { display: grid; grid-template-columns: 1fr 820px; gap: 64px; margin-top: 48px; flex: 1; }
+  .flow { display: flex; flex-direction: column; gap: 22px; }
+  .flow .step p { font-size: 29px; color: var(--onink); }
+  .flow .step p span { display: block; color: var(--onink-soft); font-size: 26px; }
+  .code { background: #111110; border: 2px solid #33332F; border-radius: 28px; padding: 36px 40px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 22px; line-height: 1.6; color: #E8E5D8; white-space: pre; align-self: start; }
+  .code .c { color: #8E8B80; } .code .k { color: var(--y); } .code .s { color: #9FD6A9; }
+  .code-cap { font-size: 24px; color: var(--onink-soft); margin-top: 18px; }
+
+  /* 9 · Accuracy */
+  table { border-collapse: collapse; width: 100%; margin-top: 48px; }
+  th, td { text-align: left; padding: 22px 24px; font-size: 32px; border-bottom: 2px solid var(--line); }
+  th { font-size: 24px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--soft); }
+  tr.now td { font-weight: 800; background: #FFF6C4; }
+  .callouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 52px; }
+  .callout .n { font-size: 84px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+  .callout p { font-size: 28px; color: var(--soft); margin-top: 10px; }
+
+  /* 10 · Trust */
+  .trust { display: grid; grid-template-columns: 1fr auto; gap: 64px; flex: 1; margin-top: 44px; align-items: start; }
+  .tcards { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-content: start; }
+  .tcard { background: #fff; border: 2px solid var(--line); border-radius: 24px; padding: 26px 30px; }
+  .tcard h3 { font-size: 32px; font-weight: 800; line-height: 1.2; }
+  .tcard p { font-size: 25px; color: var(--soft); margin-top: 8px; line-height: 1.38; }
+
+  /* 11 · CRUD */
+  .crud td:first-child { font-weight: 800; width: 31%; }
+  .crud td { font-size: 29px; padding: 18px 24px; }
+  .crud td:last-child { color: var(--soft); }
+
+  /* 12 · Process */
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px; margin-top: 56px; }
+  .stat .n { font-size: 104px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; color: var(--y); }
+  .stat p { font-size: 27px; color: var(--onink-soft); margin-top: 12px; line-height: 1.3; }
+  .gitflow { display: flex; align-items: center; gap: 22px; margin-top: 72px; }
+  .branch { font-family: 'JetBrains Mono', Consolas, monospace; font-size: 28px; padding: 14px 24px; border-radius: 16px; border: 2px solid #4A4A44; color: var(--onink); }
+  .branch.main { background: var(--y); color: var(--ink); border-color: var(--y); font-weight: 600; }
+  .arrow { font-size: 40px; color: var(--onink-soft); }
+  .live { margin-top: 48px; display: flex; gap: 18px; flex-wrap: wrap; }
+  .live span { font-size: 26px; padding: 10px 22px; border-radius: 999px; background: #2A2A27; color: var(--onink); }
+
+  /* 13 · Feedback */
+  .fb { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 48px; }
+  .fb h3 { font-size: 26px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--soft); margin-bottom: 22px; }
+  .fbrow { display: grid; grid-template-columns: 1fr 44px 1fr; gap: 16px; align-items: center; padding: 18px 0; border-bottom: 2px solid var(--line); }
+  .fbrow p { font-size: 26px; line-height: 1.32; }
+  .fbrow .to { font-size: 32px; color: var(--soft); text-align: center; }
+  .fbrow .fix { font-weight: 800; }
+  .todo { color: #A3A096; font-style: italic; }
+
+  /* 14 · Next */
+  .next { display: grid; grid-template-columns: 1.25fr 1fr; gap: 40px; margin-top: 52px; }
+  .next .hero { background: var(--ink); color: var(--onink); border-radius: 32px; padding: 44px 48px; }
+  .next .hero .k { font-size: 24px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--y); }
+  .next .hero h3 { font-size: 46px; line-height: 1.15; font-weight: 800; margin-top: 14px; }
+  .next .hero p { font-size: 28px; color: var(--onink-soft); margin-top: 18px; }
+  .pipe { display: flex; gap: 12px; align-items: center; margin-top: 30px; flex-wrap: wrap; }
+  .pipe span { font-size: 24px; font-weight: 600; padding: 10px 18px; border-radius: 14px; background: #2A2A27; }
+  .pipe i { font-style: normal; color: var(--y); font-size: 28px; }
+  .nlist { display: flex; flex-direction: column; gap: 22px; }
+  .nitem { background: #fff; border: 2px solid var(--line); border-radius: 24px; padding: 24px 30px; }
+  .nitem h3 { font-size: 30px; font-weight: 800; }
+  .nitem p { font-size: 25px; color: var(--soft); margin-top: 6px; }
+
+  /* 15 · Thanks */
+  .thanks { justify-content: center; }
+  .thanks h2 { font-size: 190px; letter-spacing: -0.05em; line-height: 0.95; }
+  .links { display: grid; grid-template-columns: repeat(3, auto); gap: 64px; margin-top: 80px; justify-content: start; }
+  .links .k { font-size: 24px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+  .links p { font-size: 34px; font-weight: 800; margin-top: 8px; }
+  .thanks .ring { position: absolute; z-index: -1; right: -180px; top: 90px; width: 900px; height: 900px; --logo-halo: #F5D649; --logo-ring: #F5D649; --logo-bars: #F5D649; }
+
+  /* Screen: one slide at a time, scaled to the window. Print/PDF: every slide, unscaled. */
+  @media screen {
+    body { overflow: hidden; height: 100vh; }
+    .slide { position: absolute; top: 0; left: 0; transform-origin: 0 0; display: none; }
+    .slide.on { display: flex; }
+    .slide.cover.on { display: grid; }
+    .hint { position: fixed; right: 16px; bottom: 12px; font: 600 13px Arial, sans-serif; color: #8a877c; }
+  }
+  @media print {
+    html, body { background: none; }
+    .slide { break-after: page; transform: none !important; }
+    .cover { display: grid; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="logo" viewBox="0 0 100 100">
+    <path d="M 46.165 6.167 A 44 44 0 1 1 16.294 21.717" style="stroke: var(--logo-halo, #D6D6CF)" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <path d="M 47.385 20.114 A 30 30 0 1 1 27.019 30.716" style="stroke: var(--logo-ring, #1A1A1A)" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <rect x="40" y="37" width="7" height="26" rx="3.5" style="fill: var(--logo-bars, #E3C43A)"/>
+    <rect x="53" y="37" width="7" height="26" rx="3.5" style="fill: var(--logo-bars, #E3C43A)"/>
+  </symbol>
+  <defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1A1A1A"/></marker></defs>
+</svg>
+
+<!-- 1 · Cover -->
+<section class="slide cover">
+  <div class="cover-left">
+    <div class="brand"><svg class="logo"><use href="#logo"/></svg>on hold</div>
+    <h1><span class="hl">Pause</span> before<br>you pay.</h1>
+    <p class="lead">An AI scam checker for older South Africans.</p>
+    <p class="cover-meta"><b style="color:var(--ink)">Victor du Preez</b> · 241250<br>DV300 Theme 4: AI-Driven Application · Social impact</p>
+  </div>
+  <div class="cover-right">
+    <svg class="ring" viewBox="0 0 100 100"><use href="#logo"/></svg>
+    <div class="phone"><img src="img/home.png" alt="On Hold home screen"></div>
+  </div>
+</section>
+
+<!-- 2 · The problem -->
+<section class="slide">
+  <p class="eyebrow">The problem</p>
+  <div class="big">R2.4 billion</div>
+  <p class="big-sub">lost to digital banking crime in South Africa in 2025.</p>
+  <div class="facts">
+    <div class="fact"><div class="fact-n">70%+</div><p>of those losses came through banking apps.</p></div>
+    <div class="fact">
+      <p class="quote">“Most digital banking crime was driven by social engineering and the manipulation or compromise of customers.”</p>
+      <p class="who">SABRIC</p>
+    </div>
+  </div>
+  <p class="kicker">The weak point isn’t the app. <span class="hl">It’s the moment someone is talked into acting.</span></p>
+  <div class="foot"><span class="src">Sources: SABRIC 2025 Annual Banking Crime Statistics (sabric.co.za); SABRIC as quoted by BusinessTech.</span><span>2</span></div>
+</section>
+
+<!-- 3 · The moment -->
+<section class="slide dark">
+  <p class="eyebrow">Where scams win</p>
+  <h2>Every scam needs one moment:<br>you acting before you check.</h2>
+  <div class="msgs">
+    <div class="msg"><span class="ch">Phone call</span><p>“This is the fraud department. Read me the code we just sent so we can stop the payment.”</p></div>
+    <div class="msg"><span class="ch">SMS</span><p>“SASSA: Your SRD R370 payment is ON HOLD. Update your details within 24hrs.”</p></div>
+    <div class="msg"><span class="ch">WhatsApp</span><p>“Hi Ma, it’s me. This is my new number. Can you send R2,500 urgently?”</p></div>
+    <div class="msg"><span class="ch">SMS</span><p>“AARTO: Outstanding fine R500. Pay within 24hrs for 50% discount.”</p></div>
+  </div>
+  <div class="tricks"><span class="trick">Fear</span><span class="trick">Authority</span><span class="trick">Love</span><span class="trick">A bargain</span><span style="font-size:28px;color:var(--onink-soft);margin-left:12px">and always: hurry.</span></div>
+  <div class="foot"><span class="mark"><svg class="logo"><use href="#logo"/></svg>on hold</span><span>3</span></div>
+</section>
+
+<!-- 4 · Who it’s for -->
+<section class="slide">
+  <p class="eyebrow">Who it’s for</p>
+  <h2>Built for the person being targeted,<br>and the family who looks out for them.</h2>
+  <div class="people">
+    <div class="person card">
+      <div class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 16 0v1"/></svg></div>
+      <span class="role">Protected</span>
+      <h3>Older South Africans</h3>
+      <p>Less confident on a phone. They check a message or call before they act.</p>
+    </div>
+    <div class="person card">
+      <div class="icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <span class="role">Guardian</span>
+      <h3>Their children and grandchildren</h3>
+      <p>Hear about a Stop, but only what the person chose to share.</p>
+    </div>
+    <div class="person card">
+      <div class="icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <span class="role">Admin</span>
+      <h3>Moderators</h3>
+      <p>Approve community reports, and manage people, guides and areas.</p>
+    </div>
+  </div>
+  <div class="access"><span>Atkinson Hyperlegible type</span><span>Big tap targets</span><span>Plain words, no jargon</span><span>Simple mode: one giant button</span></div>
+  <div class="foot"><span class="mark"><svg class="logo"><use href="#logo"/></svg>on hold</span><span>4</span></div>
+</section>
+
+<!-- 5 · The answer -->
+<section class="slide">
+  <div class="two">
+    <div>
+      <p class="eyebrow">The answer</p>
+      <h2>One question:<br>is this a scam?</h2>
+      <div class="steps">
+        <div class="step"><span class="num">1</span><p><b>Paste, screenshot or speak it.</b> Calls too.</p></div>
+        <div class="step"><span class="num">2</span><p><b>Breathe</b> while it checks.</p></div>
+        <div class="step"><span class="num">3</span><p><b>A plain verdict</b>, and what to do now.</p></div>
+        <div class="step"><span class="num">4</span><p><b>Family hears about a Stop</b>, if you said so.</p></div>
+      </div>
+      <div class="verdicts">
+        <span class="pill" style="background:var(--stop);color:#fff">Stop</span>
+        <span class="pill" style="background:var(--wait)">Wait</span>
+        <span class="pill" style="background:var(--safe);color:#fff">Looks okay</span>
+        <span class="pill" style="background:var(--info);color:#fff">Scam warning</span>
+      </div>
+    </div>
+    <div class="phones">
+      <div class="phone sm"><img src="img/verdict-stop.png" alt="A Stop verdict"></div>
+      <div class="phone sm"><img src="img/verdict-warning.png" alt="A Scam warning verdict"></div>
+    </div>
+  </div>
+  <div class="foot"><span class="mark"><svg class="logo"><use href="#logo"/></svg>on hold</span><span>5</span></div>
+</section>
+
+<!-- 6 · Live demo -->
+<section class="slide yellow demo">
+  <p class="eyebrow" style="color:var(--ink)">Live demo · onhold.pages.dev</p>
+  <h2>Let’s try it.</h2>
+  <div class="run">
+    <div class="step"><span class="num">1</span><p>The website, and the real app in the phone</p></div>
+    <div class="step"><span class="num">5</span><p>A warning poster gets a grey Scam warning</p></div>
+    <div class="step"><span class="num">2</span><p>Marie checks a “Hi Ma” WhatsApp: Stop</p></div>
+    <div class="step"><span class="num">6</span><p>Report it, then the map and Learn</p></div>
+    <div class="step"><span class="num">3</span><p>A screenshot of a fake SASSA SMS</p></div>
+    <div class="step"><span class="num">7</span><p>Pieter sees Marie’s alert</p></div>
+    <div class="step"><span class="num">4</span><p>A call in progress: “Say this, then hang up”</p></div>
+    <div class="step"><span class="num">8</span><p>Admin: activity, moderation, people</p></div>
+  </div>
+  <p class="backup">Backup if the network fails: the recorded demo video.</p>
+</section>
+
+<!-- 7 · Architecture -->
+<section class="slide">
+  <p class="eyebrow">How it’s built</p>
+  <h2>One app, one API, two AI services.</h2>
+  <div class="arch">
+    <svg class="wires" viewBox="0 0 1664 700" preserveAspectRatio="none">
+      <line x1="420" y1="330" x2="606" y2="330" stroke="#1A1A1A" stroke-width="4" marker-end="url(#head)"/>
+      <path d="M1060 300 C 1136 300, 1136 120, 1212 120" stroke="#1A1A1A" stroke-width="4" fill="none" marker-end="url(#head)"/>
+      <line x1="1060" y1="350" x2="1212" y2="350" stroke="#1A1A1A" stroke-width="4" marker-end="url(#head)"/>
+      <path d="M1060 400 C 1136 400, 1136 580, 1212 580" stroke="#1A1A1A" stroke-width="4" fill="none" marker-end="url(#head)"/>
+    </svg>
+    <div class="box" style="left:0;top:200px;width:420px">
+      <span class="k">App</span><h3>Expo · React Native · TypeScript</h3><p>iOS, Android and web from one codebase.</p>
+    </div>
+    <span class="wlabel" style="left:436px;top:250px;background:transparent">HTTPS + JWT</span>
+    <div class="box" style="left:620px;top:200px">
+      <span class="k">API</span><h3>FastAPI · Python</h3><p>48 routes, on Vercel in Frankfurt, next to the database.</p>
+    </div>
+    <div class="box" style="left:1224px;top:20px;padding:24px 30px">
+      <span class="k">Data</span><h3>Supabase</h3><p>Postgres and sign-in. Row-level security on.</p>
+    </div>
+    <div class="box ai" style="left:1224px;top:252px;padding:24px 30px">
+      <span class="k">AI · verdicts</span><h3>Claude Haiku 5.5</h3><p>Checks and follow-up chat.</p>
+    </div>
+    <div class="box ai" style="left:1224px;top:484px;padding:24px 30px">
+      <span class="k">AI · speech</span><h3>Whisper</h3><p>On Cloudflare Workers AI.</p>
+    </div>
+    <div class="box" style="left:0;top:484px;width:420px;background:var(--grey);border-color:var(--grey)">
+      <span class="k">Hosting</span><h3 style="font-size:30px">Cloudflare Pages</h3><p>The website and the web app.</p>
+    </div>
+  </div>
+  <div class="foot"><span class="mark"><svg class="logo"><use href="#logo"/></svg>on hold</span><span>7</span></div>
+</section>
+
+<!-- 8 · The AI core -->
+<section class="slide dark">
+  <p class="eyebrow">The AI is the core feature</p>
+  <h2>From a message to a verdict.</h2>
+  <div class="ai-grid">
+    <div class="flow">
+      <div class="step"><span class="num">1</span><p>Text, a screenshot, or speech<span>Whisper turns speech into words you can fix</span></p></div>
+      <div class="step"><span class="num">2</span><p>Claude reads it as untrusted data<span>SA scam patterns, and a prompt-injection guard</span></p></div>
+      <div class="step"><span class="num">3</span><p>Structured output<span>the reply always fits the schema on the right</span></p></div>
+      <div class="step"><span class="num">4</span><p>The server checks it<span>lengths, call scripts only for calls, source links</span></p></div>
+      <div class="step"><span class="num">5</span><p>Saved; family alerted on a Stop<span>only where sharing is switched on</span></p></div>
+    </div>
+    <div>
+      <div class="code"><span class="c"># backend/app/ai.py</span>
+<span class="k">class</span> ScamVerdict(BaseModel):
+    verdict: Literal[<span class="s">"stop"</span>, <span class="s">"wait"</span>, <span class="s">"safe"</span>, <span class="s">"info"</span>]
+    confidence: float
+    scam_type: ScamTypeLiteral | None = None
+    headline: str = Field(min_length=1)
+    reasons: list[str] = Field(min_length=1)
+    next_steps: list[str] = Field(min_length=1)
+    say_this: str | None = None
+    is_call: bool
+    sources: list[SourceId] = Field(default_factory=list)</div>
+      <p class="code-cap">SourceId is a fixed list of 8 official sites, so the AI can’t invent a link.</p>
+    </div>
+  </div>
+  <div class="foot"><span class="mark"><svg class="logo"><use href="#logo"/></svg>on hold</span><span>8</span></div>
+</section>
+
+<!-- 9 · Accuracy -->
+<section class="slide">
+  <p class="eyebrow">Tested, not trusted</p>
+  <h2>29 known messages through the real model.</h2>
+  <table>
+    <tr><th style="width:30%">Model</th><th>Right</th><th>Dangerous misses</th><th>False alarms</th><th>Speed</th><th>Per check</th></tr>
+    <tr><td>Claude Sonnet 5 (before)</td><td>29 / 29</td><td>0</td><td>0</td><td>3.5 s</td><td>about R0.07</td></tr>
+    <tr class="now"><td>Claude Haiku 5.5 (now)</td><td>29 / 29</td><td>0</td><td>0</td><td>3.0 s</td><td>about R0.005</td></tr>
+  </table>
+  <div class="callouts">
+    <div class="callout"><div class="n">17</div><p>scams, including fake “official warnings” that push a link</p></div>
+    <div class="callout"><div class="n">10</div><p>genuine messages and real warnings that must not raise an alarm</p></div>
+    <div class="callout"><div class="n">~16×</div><p>cheaper after switching to Haiku, with nothing lost</p></div>
+  </div>
+  <div class="foot"><span class="src">“Dangerous” = a scam called Looks okay or Scam warning. Re-run with <b>uv run python -m scripts.eval</b></span><span>9</span></div>
+</section>
+
+<!-- 10 · Trust by design -->
+<section class="slide">
+  <p class="eyebrow">Trust and security by design</p>
+  <h2>It shows its sources, and it can say it’s unsure.</h2>
+  <div class="trust">
+    <div class="tcards">
+      <div class="tcard"><h3>Sources it can’t make up</h3><p>Links come only from SABRIC, SASSA, SARS, AARTO, FSCA, PASA, SAPS.</p></div>
+      <div class="tcard"><h3>Warnings are never green</h3><p>A real warning poster is grey. A fake “warning” is a Stop.</p></div>
+      <div class="tcard"><h3>Unsure means Wait</h3><p>“On Hold can make mistakes. If something feels wrong, trust that.”</p></div>
+      <div class="tcard"><h3>You choose what family sees</h3><p>Per person, separate switches for verdicts and calls.</p></div>
+      <div class="tcard"><h3>The API is the only door</h3><p>Supabase sign-in tokens, row-level security, every query scoped to the person.</p></div>
+      <div class="tcard"><h3>Guard rails</h3><p>30 AI requests an hour per person; the last admin can’t be removed.</p></div>
+    </div>
+    <div class="phone xs"><img src="img/verdict-sources.png" alt="A verdict showing Official advice from SABRIC"></div>
+  </div>
+  <div class="foot"><span class="mark"><svg class="logo"><use href="#logo"/></svg>on hold</span><span>10</span></div>
+</section>
+
+<!-- 11 · CRUD -->
+<section class="slide">
+  <p class="eyebrow">Full CRUD, by role</p>
+  <h2>Everything people make, they can manage.</h2>
+  <table class="crud">
+    <tr><th>What</th><th>Create · Read · Update · Delete</th><th>Who</th></tr>
+    <tr><td>Checks and follow-up chats</td><td>Create, read, delete</td><td>The person, own only</td></tr>
+    <tr><td>Scam reports</td><td>Create, read, edit, delete; approve or reject</td><td>Reporter, and admins</td></tr>
+    <tr><td>Family links</td><td>Invite, accept, change sharing, remove</td><td>Protected and guardian</td></tr>
+    <tr><td>People</td><td>Add, view history, edit name, area and role, delete</td><td>Admins</td></tr>
+    <tr><td>Learn guides</td><td>Create, read, edit, delete</td><td>Admins (everyone reads)</td></tr>
+    <tr><td>Map areas</td><td>Create, read, edit, delete</td><td>Admins</td></tr>
+  </table>
+  <div class="foot"><span class="src">48 API routes, each documented in backend/docs/api.md</span><span>11</span></div>
+</section>
+
+<!-- 12 · Process -->
+<section class="slide dark">
+  <p class="eyebrow">How it was managed</p>
+  <h2>Small branches, tested on every push.</h2>
+  <div class="stats">
+    <div class="stat"><div class="n">213</div><p>commits on main</p></div>
+    <div class="stat"><div class="n">38</div><p>short-lived feature, fix and docs branches</p></div>
+    <div class="stat"><div class="n">59</div><p>merges, each kept visible in the history</p></div>
+    <div class="stat"><div class="n">72</div><p>automated tests: 56 API, 16 app</p></div>
+    <div class="stat"><div class="n">42</div><p>bugs logged, each with its fixing commit</p></div>
+  </div>
+  <div class="gitflow">
+    <span class="branch">feature/*  fix/*  docs/*</span><span class="arrow">→</span>
+    <span class="branch">dev</span><span class="arrow">→</span>
+    <span class="branch main">main</span>
+  </div>
+  <p style="font-size:28px;color:var(--onink-soft);margin-top:20px">GitHub Actions on every push: pytest, TypeScript, lint and jest.</p>
+  <div class="live"><span>Website: Cloudflare Pages</span><span>App: Cloudflare Pages</span><span>API: Vercel</span><span>Data: Supabase</span><span>Speech: Workers AI</span></div>
+  <div class="foot"><span class="mark"><svg class="logo"><use href="#logo"/></svg>on hold</span><span>12</span></div>
+</section>
+
+<!-- 13 · Feedback -->
+<section class="slide">
+  <p class="eyebrow">Feedback, and what changed</p>
+  <h2>Testing changed the product.</h2>
+  <div class="fb">
+    <div>
+      <h3>From peer usability testing</h3>
+      <div class="fbrow"><p class="todo">[What testers said, 1]</p><span class="to">→</span><p class="todo">[What I changed]</p></div>
+      <div class="fbrow"><p class="todo">[What testers said, 2]</p><span class="to">→</span><p class="todo">[What I changed]</p></div>
+      <div class="fbrow"><p class="todo">[What testers said, 3]</p><span class="to">→</span><p class="todo">[What I changed]</p></div>
+    </div>
+    <div>
+      <h3>From testing the live app</h3>
+      <div class="fbrow"><p>A real warning poster got a green “Looks okay”</p><span class="to">→</span><p class="fix">Grey Scam warning; fake warnings are Stop</p></div>
+      <div class="fbrow"><p>Speak returned the same canned words</p><span class="to">→</span><p class="fix">Real speech-to-text with Whisper</p></div>
+      <div class="fbrow"><p>Silence came back as the word “You”</p><span class="to">→</span><p class="fix">Voice detection: “We didn’t catch any words”</p></div>
+      <div class="fbrow"><p>The live app hung on database requests</p><span class="to">→</span><p class="fix">Transaction pooler; API moved next to the data</p></div>
+    </div>
+  </div>
+  <div class="foot"><span class="src">All 42 bugs and fixes: docs/testing.md</span><span>13</span></div>
+</section>
+
+<!-- 14 · What’s next -->
+<section class="slide">
+  <p class="eyebrow">What’s next</p>
+  <h2>From reports to scam intelligence.</h2>
+  <div class="next">
+    <div class="hero">
+      <span class="k">The big one</span>
+      <h3>Know what’s going around before anyone reports it.</h3>
+      <p>A daily AI job reads official alerts and drafts warnings with the source attached. An admin approves them first. In-app reports stay as the local, near-you layer.</p>
+      <div class="pipe"><span>SABRIC · SASSA · SARS · RTIA · FSCA</span><i>→</i><span>AI draft + source</span><i>→</i><span>Admin approves</span><i>→</i><span>Learn and the map</span></div>
+    </div>
+    <div class="nlist">
+      <div class="nitem"><h3>App Store and Google Play</h3><p>Build profiles are ready (Expo EAS).</p></div>
+      <div class="nitem"><h3>Push alerts for family</h3><p>Alerts are in-app today; push and SMS next.</p></div>
+      <div class="nitem"><h3>Help during a call</h3><p>Spotting a live scam call, Android first.</p></div>
+      <div class="nitem"><h3>A bigger accuracy test</h3><p>Built from real checks, with consent.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span class="mark"><svg class="logo"><use href="#logo"/></svg>on hold</span><span>14</span></div>
+</section>
+
+<!-- 15 · Thank you -->
+<section class="slide yellow thanks">
+  <svg class="ring" viewBox="0 0 100 100"><use href="#logo"/></svg>
+  <div class="brand"><svg class="logo"><use href="#logo"/></svg>on hold</div>
+  <h2 style="margin-top:56px">Thank you.<br>Questions?</h2>
+  <div class="links">
+    <div><span class="k">Try it</span><p>onhold.pages.dev</p></div>
+    <div><span class="k">Code</span><p>github.com/victordupreez0/On-Hold</p></div>
+    <div><span class="k">Demo sign-in</span><p>marie@onhold.test · onhold-demo</p></div>
+  </div>
+</section>
+
+<p class="hint">← → to move · F for full screen</p>
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let i = Math.max(0, Math.min(slides.length - 1, (parseInt(location.hash.slice(1), 10) || 1) - 1));
+  const fit = () => {
+    const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    const x = (innerWidth - 1920 * s) / 2, y = (innerHeight - 1080 * s) / 2;
+    for (const el of slides) el.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+  };
+  const show = (n) => {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((el, k) => el.classList.toggle('on', k === i));
+    history.replaceState(null, '', '#' + (i + 1));
+  };
+  addEventListener('resize', fit);
+  addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) show(i + 1);
+    else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) show(i - 1);
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key.toLowerCase() === 'f') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  });
+  addEventListener('click', (e) => show(e.clientX > innerWidth / 3 ? i + 1 : i - 1));
+  fit(); show(i);
+</script>
+</body>
+</html>

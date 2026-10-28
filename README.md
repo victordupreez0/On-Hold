@@ -120,6 +120,8 @@ Scammers in South Africa go after the moment between reading a message and actin
 
 A 6-minute walkthrough: signing in, checking a message, a screenshot and a call, a Stop reaching family, the map and Learn, and the admin panel (dashboard, activity, users, moderation).
 
+The presentation slides are in [presentation/](presentation): [On-Hold-Presentation.pdf](presentation/On-Hold-Presentation.pdf), or open [on-hold-presentation.html](presentation/on-hold-presentation.html) in a browser (arrow keys to move, F for full screen). The [run sheet](presentation/On-Hold-Run-Sheet.pdf) has the demo script.
+
 ## Using the app
 
 Try it on the [website](https://onhold.pages.dev): the phone on the page is the real app. The demo accounts, all with password **onhold-demo**, are:
