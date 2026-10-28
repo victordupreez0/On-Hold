@@ -109,13 +109,13 @@ Scammers in South Africa go after the moment between reading a message and actin
 
 ## Using the app
 
-Try it on the [website](https://onhold.pages.dev): the phone on the page is the real app. The demo accounts, all with password **onhold-demo**, are:
+Try it on the [website](https://onhold.pages.dev): the phone on the page is the real app. The demo accounts are below. Marie and Pieter use the password **onhold-demo**; they're also one tap away on the sign-in screen.
 
 | Account | Role | Shows |
 |---|---|---|
 | `marie@onhold.test` | Protected | Home with recent checks, History, Family sharing toggles |
 | `pieter@onhold.test` | Guardian | Marie's Stop alert under "Needs you", the alert timeline, invites |
-| `admin@onhold.test` | Admin (Lerato) | The admin panel. This one has its own password (not `onhold-demo`), because an admin can delete people; access on request. |
+| `admin@onhold.test` | Admin (Lerato) | The admin panel: dashboard, activity, moderation, people, guides and suburbs. Its own password, shared for marking: `demo12345`. It will be changed after marking. |
 
 **Getting around.** The tab bar is always there: **Home · Map · Check · Learn · Family**. The yellow button in the middle always starts a fresh check.
 
