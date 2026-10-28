@@ -12,9 +12,5 @@ __pycache__/
 supabase/.branches/
 supabase/.temp/
 
-# local attachments / secrets dropped in .claude (keep launch config)
-.claude/*
-!.claude/launch.json
-
 # wrangler cache from Cloudflare Pages deploys
 .wrangler/
