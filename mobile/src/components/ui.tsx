@@ -250,6 +250,16 @@ export function Chip({ label, selected, onPress, icon }: { label: string; select
   );
 }
 
+/** A sideways-scrolling row of filter chips. On the web a ScrollView grows by default, so on a
+ * short screen the row soaked up the spare height and every chip stretched with it: hence flexGrow 0. */
+export function ChipRow({ children, accessibilityLabel }: { children: ReactNode; accessibilityLabel?: string }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow} contentContainerStyle={styles.chipRowContent} accessibilityLabel={accessibilityLabel}>
+      {children}
+    </ScrollView>
+  );
+}
+
 /** A labelled on/off row. One control, so screen readers announce it once. */
 export function Toggle({ label, detail, value, onChange }: { label: string; detail: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -388,6 +398,8 @@ const styles = StyleSheet.create({
   column: { flex: 1, width: '100%', maxWidth: 560, alignSelf: 'center' },
   columnWide: { maxWidth: 960 },
   pad: { paddingHorizontal: space.lg - 4, paddingTop: space.sm, paddingBottom: space.xxl, gap: space.lg + 4, flexGrow: 1 },
+  chipRow: { flexGrow: 0 },
+  chipRowContent: { gap: space.sm, paddingRight: space.md },
   footer: { paddingHorizontal: space.lg - 4, paddingTop: space.sm, paddingBottom: space.md, gap: space.sm },
   pageTitle: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingTop: space.sm },
   header: { flexDirection: 'row', alignItems: 'center', gap: space.xs, minHeight: minTouch, marginBottom: -space.sm },

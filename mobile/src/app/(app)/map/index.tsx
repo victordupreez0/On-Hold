@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import * as api from '@/api';
 import { ScamMap } from '@/components/ScamMap';
-import { Button, Chip, ErrorState, Feather, Loading, PageTitle, Screen, Section, T } from '@/components/ui';
+import { Button, Chip, ChipRow, ErrorState, Feather, Loading, PageTitle, Screen, Section, T } from '@/components/ui';
 import { SCAM_LABELS } from '@/fixtures';
 import { useUser } from '@/session';
 import { colors, heat, heatRgba, minTouch, radius, space } from '@/theme';
@@ -32,12 +32,12 @@ export default function ScamMapScreen() {
     <Screen>
       <PageTitle title="Scams near you" subtitle="Where people are reporting scams right now." />
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} accessibilityLabel="Filter by type of scam">
+      <ChipRow accessibilityLabel="Filter by type of scam">
         <Chip label="All scams" selected={!scamType} onPress={() => setScamType(undefined)} />
         {TYPES.map((t) => (
           <Chip key={t} label={SCAM_LABELS[t]} selected={scamType === t} onPress={() => setScamType(t)} />
         ))}
-      </ScrollView>
+      </ChipRow>
 
       <View>
         {suburbs.data || suburbs.error ? (
@@ -141,7 +141,6 @@ function FocusCard({ area, explainers, onClose }: { area: AreaStat; explainers: 
 }
 
 const styles = StyleSheet.create({
-  chips: { gap: space.sm, paddingRight: space.md },
   legend: {
     position: 'absolute',
     left: space.sm + 4,

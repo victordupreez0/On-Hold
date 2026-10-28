@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import { ScrollView } from 'react-native';
 
 import * as api from '@/api';
 import type { ActivityType } from '@/api';
 import { ACTIVITY, ActivityList } from '@/components/ActivityList';
-import { Button, Chip, EmptyState, ErrorState, Header, Loading, Screen } from '@/components/ui';
-import { space } from '@/theme';
+import { Button, Chip, ChipRow, EmptyState, ErrorState, Header, Loading, Screen } from '@/components/ui';
 import { useLoad } from '@/useLoad';
 
 const PAGE = 50;
@@ -24,12 +22,12 @@ export default function AdminActivity() {
   return (
     <Screen wide>
       <Header title="Activity" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingRight: space.md }}>
+      <ChipRow>
         <Chip label="Everything" selected={!type} onPress={() => pick()} />
         {(Object.keys(ACTIVITY) as ActivityType[]).map((t) => (
           <Chip key={t} label={ACTIVITY[t].label} icon={ACTIVITY[t].icon} selected={type === t} onPress={() => pick(t)} />
         ))}
-      </ScrollView>
+      </ChipRow>
 
       {feed.error ? (
         <ErrorState message={feed.error} onRetry={feed.reload} />
