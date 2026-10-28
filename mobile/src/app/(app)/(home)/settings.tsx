@@ -98,7 +98,7 @@ export default function Settings() {
         {user.role === 'admin' && <ListRow icon="shield" title="Admin panel" subtitle="Dashboard, activity, users, reports and Learn guides" onPress={() => router.push('/admin')} />}
       </ListGroup>
 
-      <Button label="Sign out" variant="ghost" icon="log-out" onPress={signOut} />
+      <Button label="Sign out" variant="secondary" icon="log-out" onPress={signOut} />
       <Pressable onPress={deleteAccount} accessibilityRole="button" style={{ minHeight: minTouch, alignItems: 'center', justifyContent: 'center' }}>
         <T v="label" color={colors.stop}>
           Delete my account
