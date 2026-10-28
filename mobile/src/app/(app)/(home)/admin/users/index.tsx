@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import * as api from '@/api';
-import { Button, Card, Chip, ErrorState, Header, Loading, Pill, Screen, T, TextField, timeAgo } from '@/components/ui';
+import { Button, Card, Chip, ChipRow, ErrorState, Header, Loading, Pill, Screen, T, TextField, timeAgo } from '@/components/ui';
 import { ROLE_PILL } from '@/fixtures';
 import { colors, space } from '@/theme';
 import type { Role } from '@/types';
@@ -22,12 +22,12 @@ export default function AdminUsers() {
     <Screen wide footer={<Button label="Add a person" icon="user-plus" onPress={() => router.push('/admin/users/new')} />}>
       <Header title="Users" />
       <TextField label="Search" placeholder="Name or email" value={search} onChangeText={setSearch} autoCapitalize="none" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingRight: space.md }}>
+      <ChipRow>
         <Chip label="Everyone" selected={!role} onPress={() => setRole(undefined)} />
         {(Object.keys(ROLE_PILL) as Role[]).map((r) => (
           <Chip key={r} label={ROLE_PILL[r].label} selected={role === r} onPress={() => setRole(r)} />
         ))}
-      </ScrollView>
+      </ChipRow>
 
       {users.error ? (
         <ErrorState message={users.error} onRetry={users.reload} />

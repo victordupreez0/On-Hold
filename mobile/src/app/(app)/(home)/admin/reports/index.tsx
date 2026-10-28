@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import * as api from '@/api';
 import type { AdminReport } from '@/api';
 import { confirm } from '@/confirm';
-import { Button, Card, Chip, ErrorState, Feather, Header, Loading, Pill, Screen, T, TextLink, timeAgo } from '@/components/ui';
+import { Button, Card, Chip, ChipRow, ErrorState, Feather, Header, Loading, Pill, Screen, T, TextLink, timeAgo } from '@/components/ui';
 import { CHANNEL_LABELS, SCAM_LABELS } from '@/fixtures';
 import { colors, space } from '@/theme';
 import { useToast } from '@/toast';
@@ -30,7 +30,7 @@ export default function AdminReports() {
   return (
     <Screen wide>
       <Header title="Reports" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, paddingRight: space.md }}>
+      <ChipRow>
         {FILTERS.map((f) => (
           <Chip
             key={f.label}
@@ -42,7 +42,7 @@ export default function AdminReports() {
             }}
           />
         ))}
-      </ScrollView>
+      </ChipRow>
 
       {list.error ? (
         <ErrorState message={list.error} onRetry={list.reload} />
