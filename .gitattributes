@@ -1,2 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Coding-assistant files: kept in the repo, left out of source zips (git archive, GitHub's Download ZIP)
+/HANDOFF.md export-ignore
+/.claude export-ignore
+/mobile/AGENTS.md export-ignore
+/mobile/.claude export-ignore

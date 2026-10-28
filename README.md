@@ -160,6 +160,36 @@ flowchart LR
   API -- "admin API (delete / create accounts)" --> AUTH
 ```
 
+### Project structure
+
+`mobile` is the frontend and `backend` is the backend. The other folders support them.
+
+```
+On-Hold/
+├── mobile/          The app (frontend): Expo, React Native, TypeScript.
+│   │                One codebase builds the Android, iOS and web app.
+│   └── src/
+│       ├── app/         Screens. Each file is a route (Expo Router).
+│       ├── screens/     Larger screens that more than one route shows.
+│       ├── components/  Reusable pieces: buttons, cards, the verdict, the map.
+│       ├── api.ts       Every call to the backend.
+│       └── theme.ts     Colours, type sizes, spacing.
+├── backend/         The API (backend): Python, FastAPI. Runs on Vercel.
+│   ├── app/
+│   │   ├── main.py      Every route: checks, reports, family, Learn, admin.
+│   │   ├── ai.py        The scam check (Claude) and speech-to-text (Whisper).
+│   │   ├── auth.py      Checks the Supabase sign-in token on each request.
+│   │   └── db.py        The Postgres connection pool.
+│   ├── scripts/     seed.py (demo data) and eval.py (the AI accuracy test).
+│   ├── tests/       The backend tests (pytest).
+│   └── docs/        API reference and AI design notes.
+├── website/         The landing page (plain HTML, CSS, JS), with the live app in a phone frame.
+├── supabase/        The database schema, as SQL migrations.
+├── docs/            The testing log and README screenshots.
+├── presentation/    The final presentation slides and run sheet.
+└── .github/         CI: lint, type check and tests on every push.
+```
+
 The app talks to Supabase **only to sign in**. Every piece of data goes through the API, which is the only thing that can read the database: row-level security is switched on for every table with no policies, so the public Supabase key exposes nothing. API keys (Anthropic, Cloudflare, the Supabase service role) live only on the server.
 
 ### A check, step by step
