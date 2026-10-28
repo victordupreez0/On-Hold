@@ -11,7 +11,7 @@ An AI scam checker for older South Africans. Paste a message, share a screenshot
 [**Website**](https://onhold.pages.dev) &nbsp;·&nbsp; [**Try the app**](https://onhold-app.pages.dev) &nbsp;·&nbsp; [**Demo video**](#demo-video) &nbsp;·&nbsp; [**Live API**](https://on-hold-ashen.vercel.app/docs) &nbsp;·&nbsp; [**API routes**](backend/docs/api.md) &nbsp;·&nbsp; [**Bug log**](docs/testing.md)
 
 [![CI](https://github.com/victordupreez0/On-Hold/actions/workflows/ci.yml/badge.svg)](https://github.com/victordupreez0/On-Hold/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-70%20passing-0A9A4A?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-72%20passing-0A9A4A?style=flat-square)
 ![Screens](https://img.shields.io/badge/screens-31-1A1A1A?style=flat-square)
 ![API](https://img.shields.io/badge/API%20routes-48-1A1A1A?style=flat-square)
 ![Platforms](https://img.shields.io/badge/Android%20·%20iOS%20·%20Web-FFE45C?style=flat-square&labelColor=1A1A1A)
@@ -43,9 +43,18 @@ An AI scam checker for older South Africans. Paste a message, share a screenshot
 
 DV300 Theme 4 (AI-Driven Application) · Social Impact and Accessibility · Victor du Preez (241250) · Open Window, 2026
 
+## Presentation Video
+
+<!--
+  To finish this section: upload the presentation as an unlisted YouTube video (or a Google Drive
+  file set to "Anyone with the link can view"), replace PRESENTATION_LINK below, then delete this comment.
+-->
+
+**[Watch the presentation video](PRESENTATION_LINK)**: introduction and concept, the app demo, a technical walkthrough of the code, and process and reflection.
+
 ## Contents
 
-[The problem](#the-problem) · [What it does](#what-it-does) · [Screenshots](#screenshots) · [Demo video](#demo-video) · [Using the app](#using-the-app) · [How it works](#how-it-works) · [Run it yourself](#run-it-yourself) · [Deployment](#deployment) · [Technologies](#technologies) · [Security and privacy](#security-and-privacy) · [Testing](#testing) · [Project management](#project-management) · [Acknowledgements](#acknowledgements)
+[Presentation video](#presentation-video) · [The problem](#the-problem) · [What it does](#what-it-does) · [Screenshots](#screenshots) · [Demo video](#demo-video) · [Using the app](#using-the-app) · [How it works](#how-it-works) · [Run it yourself](#run-it-yourself) · [Deployment](#deployment) · [Technologies](#technologies) · [Security and privacy](#security-and-privacy) · [Testing](#testing) · [Project management](#project-management) · [Acknowledgements](#acknowledgements)
 
 ## The problem
 
@@ -180,7 +189,8 @@ On-Hold/
 │   │   ├── ai.py        The scam check (Claude) and speech-to-text (Whisper).
 │   │   ├── auth.py      Checks the Supabase sign-in token on each request.
 │   │   └── db.py        The Postgres connection pool.
-│   ├── scripts/     seed.py (demo data) and eval.py (the AI accuracy test).
+│   ├── scripts/     seed.py (demo data), eval.py (the AI accuracy test) and trace_check.py
+│   │                (prints one real request to Claude and its raw reply).
 │   ├── tests/       The backend tests (pytest).
 │   └── docs/        API reference and AI design notes.
 ├── website/         The landing page (plain HTML, CSS, JS), with the live app in a phone frame.
@@ -477,5 +487,6 @@ A solo project: Victor du Preez designed, built, tested and documented it. Claud
 
 - Scam guidance checked against [SABRIC](https://www.sabric.co.za/), [SASSA via SAnews](https://www.sanews.gov.za/node/60295), [SARS](https://www.sars.gov.za/media-release/11-february-2013-warning-to-taxpayers-on-scams/), [RTIA / AARTO via SAnews](https://www.sanews.gov.za/node/84463), the [FSCA](https://www.fsca.co.za/) and [Arcadia Finance](https://www.arcadiafinance.co.za/news/older-sassa-beneficiaries-targeted-by-scammers/). Statistics in the pitch come from SABRIC (2026).
 - AI: [Claude](https://www.anthropic.com/claude) by Anthropic; [Whisper](https://github.com/openai/whisper) by OpenAI, served by [Cloudflare Workers AI](https://developers.cloudflare.com/workers-ai/).
+- AI coding tools: [Claude Code](https://www.anthropic.com/claude-code) (Anthropic) as a coding assistant for planning, writing, debugging and reviewing code and documentation. Its output was checked before merging with the automated tests (56 backend, 16 app), the type check and lint in CI on every push, the 29-case AI accuracy test (`backend/scripts/eval.py`), and testing by hand on the live app.
 - [Atkinson Hyperlegible Next](https://www.brailleinstitute.org/freefont) by the Braille Institute (SIL OFL), via `@expo-google-fonts`.
 - Icons: [Feather](https://feathericons.com/) via `@expo/vector-icons`. Web map tiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors.
