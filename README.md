@@ -8,7 +8,7 @@
 
 An AI scam checker for older South Africans. Paste a message, share a screenshot or say what the caller said,<br/>and get a plain **Stop**, **Wait** or **Looks okay**, with what to do next. Family hears about it only if you say so.
 
-[**Website**](https://onhold.pages.dev) &nbsp;·&nbsp; [**Try the app**](https://onhold-app.pages.dev) &nbsp;·&nbsp; [**Live API**](https://on-hold-ashen.vercel.app/docs) &nbsp;·&nbsp; [**API routes**](backend/docs/api.md) &nbsp;·&nbsp; [**Bug log**](docs/testing.md)
+[**Website**](https://onhold.pages.dev) &nbsp;·&nbsp; [**Try the app**](https://onhold-app.pages.dev) &nbsp;·&nbsp; [**Presentation video**](https://youtu.be/yFcSIFfe0Js) &nbsp;·&nbsp; [**Live API**](https://on-hold-ashen.vercel.app/docs) &nbsp;·&nbsp; [**API routes**](backend/docs/api.md) &nbsp;·&nbsp; [**Bug log**](docs/testing.md)
 
 [![CI](https://github.com/victordupreez0/On-Hold/actions/workflows/ci.yml/badge.svg)](https://github.com/victordupreez0/On-Hold/actions/workflows/ci.yml)
 ![Tests](https://img.shields.io/badge/tests-72%20passing-0A9A4A?style=flat-square)
@@ -43,9 +43,15 @@ An AI scam checker for older South Africans. Paste a message, share a screenshot
 
 DV300 Theme 4 (AI-Driven Application) · Social Impact and Accessibility · Victor du Preez (241250) · Open Window, 2026
 
+## Presentation Video
+
+**[Watch the presentation video on YouTube](https://youtu.be/yFcSIFfe0Js)**
+
+The final presentation in four parts: introduction and concept, a full demo of the app (Part 2: sign-in, checks by text, screenshot and call, reports, roles and the admin panel), a technical walkthrough of the code, and process and reflection.
+
 ## Contents
 
-[The problem](#the-problem) · [What it does](#what-it-does) · [Screenshots](#screenshots) · [Using the app](#using-the-app) · [How it works](#how-it-works) · [Run it yourself](#run-it-yourself) · [Deployment](#deployment) · [Technologies](#technologies) · [Security and privacy](#security-and-privacy) · [Testing](#testing) · [Project management](#project-management) · [Acknowledgements](#acknowledgements)
+[Presentation video](#presentation-video) · [The problem](#the-problem) · [What it does](#what-it-does) · [Screenshots](#screenshots) · [Using the app](#using-the-app) · [How it works](#how-it-works) · [Run it yourself](#run-it-yourself) · [Deployment](#deployment) · [Technologies](#technologies) · [Security and privacy](#security-and-privacy) · [Testing](#testing) · [Project management](#project-management) · [Acknowledgements](#acknowledgements)
 
 ## The problem
 
