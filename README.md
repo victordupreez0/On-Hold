@@ -1,16 +1,32 @@
-<div align="center">
+<img src="docs/media/onhold-hero.png" alt="On Hold: pause before you pay. A calm second opinion on scam messages for older South Africans" width="100%" />
 
-<img src="mobile/assets/images/icon.png" width="112" alt="On Hold app icon" />
+<div align="center">
 
 # On Hold · Mobile app + AI
 
-**Victor du Preez · 241250**
+**A scam checker for older South Africans: paste it, screenshot it or say it, and get Stop, Wait or Looks okay.**
 
-**Live: [https://onhold.pages.dev](https://onhold.pages.dev)** &nbsp;·&nbsp; [Presentation video](https://youtu.be/yFcSIFfe0Js)
+Victor du Preez · 241250 · Interactive Development 300 · Open Window · November 2026
 
-[About](#about) · [Getting started](#getting-started) · [Features](#features) · [Development process](#development-process) · [Final outcome](#final-outcome) · [Conclusion](#conclusion)
+**[Live app](https://onhold.pages.dev)** · **[Demo video](https://youtu.be/yFcSIFfe0Js)**
+
+![Expo](https://img.shields.io/badge/Expo-161b22?style=flat-square&logo=expo&logoColor=ffffff) ![React Native](https://img.shields.io/badge/React_Native-161b22?style=flat-square&logo=react&logoColor=61DAFB) ![TypeScript](https://img.shields.io/badge/TypeScript-161b22?style=flat-square&logo=typescript&logoColor=3178C6) ![FastAPI](https://img.shields.io/badge/FastAPI-161b22?style=flat-square&logo=fastapi&logoColor=009688) ![Python](https://img.shields.io/badge/Python-161b22?style=flat-square&logo=python&logoColor=3776AB) ![Supabase](https://img.shields.io/badge/Supabase-161b22?style=flat-square&logo=supabase&logoColor=3ECF8E) ![Claude](https://img.shields.io/badge/Claude-161b22?style=flat-square&logo=claude&logoColor=D97757) ![Whisper](https://img.shields.io/badge/Whisper-161b22?style=flat-square&logo=openai&logoColor=ffffff) ![Cloudflare](https://img.shields.io/badge/Cloudflare-161b22?style=flat-square&logo=cloudflare&logoColor=F38020) ![pytest](https://img.shields.io/badge/pytest-161b22?style=flat-square&logo=pytest&logoColor=0A9EDC) ![Jest](https://img.shields.io/badge/Jest-161b22?style=flat-square&logo=jest&logoColor=C21325)
 
 </div>
+
+<details>
+<summary><b>Table of contents</b></summary>
+
+1. [About](#about)
+2. [Getting started](#getting-started)
+3. [Features](#features)
+4. [Development process](#development-process)
+5. [Final outcome](#final-outcome)
+6. [Conclusion](#conclusion)
+
+</details>
+
+---
 
 ## About
 
@@ -18,21 +34,25 @@ On Hold is a scam checker for older South Africans. Paste a message, share a scr
 
 Scammers go after the moment between reading a message and acting on it: a fake bank call asking for an OTP, a SASSA SMS saying a grant is on hold, a "Hi Ma, this is my new number" WhatsApp. Older people are targeted most and are often alone when it happens. They need a calm second opinion in that moment, and their family often only finds out afterwards.
 
-<p align="center">
-  <img src="docs/screenshots/mockup.png" width="680" alt="Three phones showing On Hold: Marie's home screen, a red Stop verdict on a fake SASSA message, and her guardian's alert" />
-</p>
+<p align="center"><img src="docs/media/onhold-tour.gif" alt="A 20-second tour of On Hold: checking a message, the Stop verdict, the family alert and Learn" width="100%" /></p>
 
-**Built with**
+### Built with
 
-![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white)
-![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
-![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=claude&logoColor=white)
-![Whisper](https://img.shields.io/badge/Whisper-412991?style=for-the-badge&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0xMiAxYTMgMyAwIDAgMC0zIDN2OGEzIDMgMCAwIDAgNiAwVjRhMyAzIDAgMCAwLTMtM3oiLz48cGF0aCBkPSJNMTkgMTB2MmE3IDcgMCAwIDEtMTQgMHYtMiIvPjxsaW5lIHgxPSIxMiIgeTE9IjE5IiB4Mj0iMTIiIHkyPSIyMyIvPjxsaW5lIHgxPSI4IiB5MT0iMjMiIHgyPSIxNiIgeTI9IjIzIi8%2BPC9zdmc%2B)
-![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
+| Layer | Technology | Used for |
+|---|---|---|
+| App | Expo SDK 57, React Native 0.86, TypeScript, Expo Router | One codebase for Android, iOS and the web, with one file per screen |
+| Device input | expo-clipboard, expo-image-picker, expo-audio | Pasting a message, picking a screenshot, recording what a caller said |
+| Maps | react-native-maps (native), react-leaflet and Leaflet with OpenStreetMap tiles (web) | The community scam map |
+| Type and icons | Atkinson Hyperlegible Next, Feather icons via `@expo/vector-icons` | Readable text and clear icons |
+| Sign-in | Supabase Auth with `supabase-js`, AsyncStorage | Accounts, sign-in tokens, staying signed in |
+| API | Python 3.12, FastAPI, Pydantic, PyJWT | Every route, input validation, checking sign-in tokens |
+| Database | Supabase Postgres, psycopg 3 with a connection pool | All app data, reached only through the API |
+| AI verdicts | Claude Haiku 5.5 (`claude-haiku-5-5`) through the Anthropic Python SDK | Scam verdicts and follow-up questions |
+| Speech to text | Whisper (`whisper-large-v3-turbo`) on Cloudflare Workers AI, called with httpx | Turning what a caller said into text |
+| Hosting | Vercel (API), Cloudflare Pages (web app and website) | The live app |
+| Website | HTML, CSS and JavaScript | The landing page, with the live app in a phone frame |
+| Mobile builds | Expo EAS | Android and iOS builds |
+| Tests and CI | pytest, Jest (`jest-expo`), GitHub Actions | Backend and app tests, type check and lint on every push |
 
 ## Getting started
 
@@ -156,61 +176,45 @@ cd mobile && npx tsc --noEmit && npx expo lint && npx jest --coverage
 
 ## Features
 
+<img src="docs/media/onhold-check.png" alt="Check something: paste it, screenshot it or say it" width="49%" /> <img src="docs/media/onhold-verdict.png" alt="A clear Stop verdict with what to do next" width="49%" />
+<img src="docs/media/onhold-family.png" alt="A guardian sees the Stop alert, never the message itself" width="49%" /> <img src="docs/media/onhold-learn.png" alt="Learn: the scams going around nearby" width="49%" />
+
 ### Check (the AI feature)
 
 Paste a message, share a screenshot, or speak what a caller is saying. A deliberate breathing pause of at least 3 seconds comes first, then a verdict with reasons and next steps. Calls also get a "Say this, then hang up" line. A genuine warning about a scam (a poster, a news report) gets a grey **Scam warning**, never a green tick, and a fake "warning" is a Stop. Verdicts cite official sources from a vetted list, so the AI can't invent a link. Follow-up questions go in a chat saved to History.
-
-<p align="center">
-  <img src="docs/screenshots/check.jpg" width="230" alt="The Check screen with paste, screenshot and speak options" />
-  <img src="docs/screenshots/pause.jpg" width="230" alt="The breathing pause before a verdict" />
-  <img src="docs/screenshots/verdict.jpg" width="230" alt="A red Stop verdict on a fake SASSA message, with numbered next steps" />
-</p>
 
 ### Family
 
 A guardian invites someone with a 6-character code or a WhatsApp share. Accepting shows exactly what is and isn't shared. Sharing is set per person and can stop any time. A Stop verdict alerts guardians **only if the person agreed**, and "Tell my family" sends any check on purpose.
 
-<p align="center">
-  <img src="docs/screenshots/family-sharing.jpg" width="230" alt="Marie's sharing controls for Pieter" />
-  <img src="docs/screenshots/family-guardian.jpg" width="230" alt="Pieter's view with Marie's Stop alert" />
-</p>
-
 ### Scam map and community reports
 
 Anyone can create, edit and delete their own reports. Every report is moderated before it reaches the map, and an edited report goes back to review. The map shows approved reports per suburb as a heat map, filterable by scam type, and is never more precise than a suburb.
-
-<p align="center">
-  <img src="docs/screenshots/map.jpg" width="230" alt="Community scam map by suburb" />
-  <img src="docs/screenshots/admin-moderation.jpg" width="230" alt="Reports waiting for an admin to approve or reject them" />
-</p>
 
 ### Learn
 
 "Going around near you" comes from the last 14 days of approved reports. Nine sourced guides cover the common South African scams, and each shows how the scammer takes your money: the weakness they count on and their plan step by step.
 
-<p align="center">
-  <img src="docs/screenshots/learn.jpg" width="230" alt="The Learn tab" />
-</p>
-
 ### Home and accessibility
 
 Home puts one large button in front of everything else, with "Someone on the phone right now?" straight below it. Simple mode cuts the app down to one giant Check button plus "Call Pieter". The app uses Atkinson Hyperlegible Next, 48 pt touch targets and screen-reader labels throughout, and verdicts are always icon, word and colour together.
-
-<p align="center">
-  <img src="docs/screenshots/home.jpg" width="230" alt="Home screen with one large Check something button" />
-  <img src="docs/screenshots/welcome.jpg" width="230" alt="The welcome screen" />
-</p>
 
 ### Admin panel
 
 A dashboard with totals and the 14-day trend, a live activity feed, user management (last active, history, family links; add, edit, change role, delete), a moderation queue, and full CRUD on Learn guides and suburbs.
 
-<p align="center">
-  <img src="docs/screenshots/admin-dashboard.jpg" width="185" alt="Admin dashboard" />
-  <img src="docs/screenshots/admin-activity.jpg" width="185" alt="Live activity feed" />
-  <img src="docs/screenshots/admin-users.jpg" width="185" alt="Users, most recently active first" />
-  <img src="docs/screenshots/admin-person.jpg" width="185" alt="One person's history and family links" />
-</p>
+<details>
+<summary><b>More screenshots</b></summary>
+
+<img src="docs/screenshots/check.jpg" width="24%" alt="The Check screen with paste, screenshot and speak options" /> <img src="docs/screenshots/pause.jpg" width="24%" alt="The breathing pause before a verdict" /> <img src="docs/screenshots/verdict.jpg" width="24%" alt="A red Stop verdict on a fake SASSA message, with numbered next steps" /> <img src="docs/screenshots/family-sharing.jpg" width="24%" alt="Marie's sharing controls for Pieter" />
+
+<img src="docs/screenshots/family-guardian.jpg" width="24%" alt="Pieter's view with Marie's Stop alert" /> <img src="docs/screenshots/map.jpg" width="24%" alt="Community scam map by suburb" /> <img src="docs/screenshots/admin-moderation.jpg" width="24%" alt="Reports waiting for an admin to approve or reject them" /> <img src="docs/screenshots/learn.jpg" width="24%" alt="The Learn tab" />
+
+<img src="docs/screenshots/home.jpg" width="24%" alt="Home screen with one large Check something button" /> <img src="docs/screenshots/welcome.jpg" width="24%" alt="The welcome screen" /> <img src="docs/screenshots/admin-dashboard.jpg" width="24%" alt="Admin dashboard" /> <img src="docs/screenshots/admin-activity.jpg" width="24%" alt="Live activity feed" />
+
+<img src="docs/screenshots/admin-users.jpg" width="24%" alt="Users, most recently active first" /> <img src="docs/screenshots/admin-person.jpg" width="24%" alt="One person's history and family links" />
+
+</details>
 
 ## Development process
 
@@ -521,7 +525,7 @@ The hardest problems showed up only once the app was live: connection limits on 
 
 ---
 
-**License:** © 2026 Victor du Preez. All rights reserved.
+**Licence:** © 2026 Victor du Preez. All rights reserved.
 
 **Author:** [Victor du Preez](https://github.com/victordupreez0) · 241250 · DV300 Theme 4 (AI-Driven Application) · Social Impact and Accessibility · Open Window, 2026. A solo project: designed, built, tested and documented by the author.
 
